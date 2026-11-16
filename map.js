@@ -2,6 +2,11 @@ var map,infoWindow;
 var locations = [];
 var frisco = {lat: 33.0597, lng: -96.7512};
 
+function isDoNotVisit(loc) {
+  var vc = (loc.visitcode || '').toString().toLowerCase();
+  return vc.indexOf('do not visit') !== -1;
+}
+
       function CenterControl(controlDiv, map) {
         var controlUI = document.createElement('div');
         controlUI.style.backgroundColor = '#fff';
@@ -75,9 +80,10 @@ function initialiseMap() {
 				location.comments=this[15];
 				location.visitdate=this[16];
 				location.rowid=this[21];
+				if (isDoNotVisit(location)) return; // skip Do Not Visit
 	  		    locations.push(location);
     	});
-		console.log('locations size    '+locations.length);
+		console.log('locations size (after DNV filter) '+locations.length);
 		
 		var city=decodeURIComponent($.urlParam('City'));
 		var stts=decodeURIComponent($.urlParam('S'));
@@ -137,7 +143,6 @@ function setLocations(map, locations) {
     count++;
   }
   google.maps.event.trigger(map, "resize");
-  // Fit to the filtered set so a city view shows all its markers
   if (count > 1 && count < 2000) {
     map.fitBounds(bounds);
   }

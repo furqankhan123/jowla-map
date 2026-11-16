@@ -6,7 +6,7 @@
 const AVG_VISIT_MINS = 3;
 const MAX_STOPS = 15;
 const DENSE_THRESHOLD_KM = 0.5;
-const RECENT_DAYS = 180; // was 30; looser so more stops appear
+const RECENT_DAYS = 180;
 const API_KEY = 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ';
 
 let currentPolyline = null;
@@ -55,6 +55,11 @@ function optimizeNearbyRoute(map) {
       runOptimization(map, { lat: center.lat(), lng: center.lng() });
     }
   );
+}
+
+function isDoNotVisit(loc) {
+  const vc = (loc.visitcode || '').toString().toLowerCase();
+  return vc.includes('do not visit');
 }
 
 function dedupeByLatLng(arr) {
@@ -142,6 +147,7 @@ function getNearestUnvisited(start, allLocations, maxCount) {
   return allLocations
     .filter((loc) => {
       if (!loc.latitude || !loc.longtitude) return false;
+      if (isDoNotVisit(loc)) return false;
       if (loc.visitdate) {
         const visit = new Date(loc.visitdate);
         if (!isNaN(visit.getTime())) {
