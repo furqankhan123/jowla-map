@@ -1,17 +1,14 @@
 /**
  * Optimize Nearby Route feature for Jowla Map
- * Adds a map control that selects nearest unvisited stops,
- * optimizes order via Google Directions (optimize:true),
- * estimates total time, and shows results in a side panel.
+ * Uses Google Routes API (computeRoutes) with optimizeWaypointOrder.
  */
 
 const AVG_VISIT_MINS = 3;
-const MAX_ROUTE_MINS = 60;
 const MAX_STOPS = 12;
 const DENSE_THRESHOLD_KM = 0.5;
+const API_KEY = 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ';
 
-let currentDirectionsRenderer = null;
-let selectedStartMarker = null;
+let currentPolyline = null;
 
 function addOptimizeControl(map) {
   const controlDiv = document.createElement('div');
@@ -53,14 +50,13 @@ function optimizeNearbyRoute(map) {
       runOptimization(map, start);
     },
     () => {
-      // Fallback to map center if geolocation denied
       const center = map.getCenter();
       runOptimization(map, { lat: center.lat(), lng: center.lng() });
     }
   );
 }
 
-function runOptimization(map, start) {
+async function runOptimization(map, start) {
   const candidates = getNearestUnvisited(start, window.locations || locations, MAX_STOPS);
 
   if (candidates.length < 2) {
@@ -68,33 +64,62 @@ function runOptimization(map, start) {
     return;
   }
 
-  const travelMode = isDenseCluster(candidates)
-    ? google.maps.TravelMode.WALKING
-    : google.maps.TravelMode.DRIVING;
+  const travelMode = isDenseCluster(candidates) ? 'WALK' : 'DRIVE';
 
-  const directionsService = new google.maps.DirectionsService();
-  directionsService.route(
-    {
-      origin: start,
-      destination: candidates[candidates.length - 1],
-      waypoints: candidates.slice(0, -1).map((c) => ({
-        location: { lat: c.latitude, lng: c.longtitude },
-        stopover: true,
-      })),
-      optimizeWaypoints: true,
-      travelMode: travelMode,
+  // Last candidate is temporary destination; optimizer reorders intermediates
+  const destination = candidates[candidates.length - 1];
+  const intermediates = candidates.slice(0, -1);
+
+  const body = {
+    origin: {
+      location: { latLng: { latitude: start.lat, longitude: start.lng } }
     },
-    (result, status) => {
-      if (status === 'OK') {
-        const ordered = applyWaypointOrder(candidates, result.routes[0].waypoint_order);
-        const totalMins = estimateTotalTime(result, ordered.length);
-        showRoutePanel(ordered, totalMins, travelMode, start, result, map);
-        drawRouteOnMap(map, result);
-      } else {
-        alert('Directions request failed: ' + status);
-      }
+    destination: {
+      location: { latLng: { latitude: destination.latitude, longitude: destination.longtitude } }
+    },
+    intermediates: intermediates.map(c => ({
+      location: { latLng: { latitude: c.latitude, longitude: c.longtitude } }
+    })),
+    travelMode: travelMode,
+    optimizeWaypointOrder: true
+  };
+
+  try {
+    const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': API_KEY,
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.optimizedIntermediateWaypointIndex'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      alert('Routes API error: ' + res.status + '\n' + errText.slice(0, 300));
+      return;
     }
-  );
+
+    const data = await res.json();
+    const route = data.routes && data.routes[0];
+    if (!route) {
+      alert('No route returned');
+      return;
+    }
+
+    const order = route.optimizedIntermediateWaypointIndex || [];
+    const ordered = order.map(i => intermediates[i]);
+    ordered.push(destination); // destination stays last in this simple setup
+
+    const durationSecs = parseInt(route.duration || '0', 10);
+    const totalMins = Math.round(durationSecs / 60) + ordered.length * AVG_VISIT_MINS;
+
+    showRoutePanel(ordered, totalMins, travelMode, start);
+    drawPolyline(map, route.polyline && route.polyline.encodedPolyline);
+  } catch (e) {
+    alert('Request failed: ' + e.message);
+  }
 }
 
 function getNearestUnvisited(start, allLocations, maxCount) {
@@ -104,7 +129,6 @@ function getNearestUnvisited(start, allLocations, maxCount) {
   return allLocations
     .filter((loc) => {
       if (!loc.latitude || !loc.longtitude) return false;
-      // Skip recently visited (within last 30 days) if visitdate present
       if (loc.visitdate) {
         const visit = new Date(loc.visitdate);
         if (!isNaN(visit.getTime())) {
@@ -129,7 +153,7 @@ function isDenseCluster(points) {
 }
 
 function haversine(a, b) {
-  const R = 6371; // km
+  const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
   const dLng = ((b.lng - a.lng) * Math.PI) / 180;
   const x =
@@ -140,31 +164,23 @@ function haversine(a, b) {
   return 2 * R * Math.asin(Math.sqrt(x));
 }
 
-function applyWaypointOrder(candidates, order) {
-  return order.map((i) => candidates[i]);
-}
-
-function estimateTotalTime(directionsResult, stopCount) {
-  const travelSecs = directionsResult.routes[0].legs.reduce(
-    (sum, leg) => sum + leg.duration.value,
-    0
-  );
-  return Math.round(travelSecs / 60) + stopCount * AVG_VISIT_MINS;
-}
-
-function drawRouteOnMap(map, result) {
-  if (currentDirectionsRenderer) {
-    currentDirectionsRenderer.setMap(null);
+function drawPolyline(map, encoded) {
+  if (currentPolyline) {
+    currentPolyline.setMap(null);
   }
-  currentDirectionsRenderer = new google.maps.DirectionsRenderer({
-    map: map,
-    directions: result,
-    suppressMarkers: true, // keep original markers
-    polylineOptions: { strokeColor: '#1a73e8', strokeWeight: 5 },
+  if (!encoded || !google.maps.geometry) return;
+
+  const path = google.maps.geometry.encoding.decodePath(encoded);
+  currentPolyline = new google.maps.Polyline({
+    path: path,
+    geodesic: true,
+    strokeColor: '#1a73e8',
+    strokeWeight: 5,
+    map: map
   });
 }
 
-function showRoutePanel(orderedStops, totalMins, travelMode, start, result, map) {
+function showRoutePanel(orderedStops, totalMins, travelMode, start) {
   let panel = document.getElementById('route-panel');
   if (!panel) {
     panel = document.createElement('div');
@@ -179,7 +195,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, result, map)
     document.body.appendChild(panel);
   }
 
-  const modeText = travelMode === google.maps.TravelMode.WALKING ? 'walking' : 'driving';
+  const modeText = travelMode === 'WALK' ? 'walking' : 'driving';
   const body = document.getElementById('route-panel-body');
 
   let html = `<div class="meta">~${totalMins} min total &middot; ${modeText}</div><ol>`;
@@ -199,5 +215,4 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, result, map)
   panel.classList.add('visible');
 }
 
-// Expose for use after map init
 window.addOptimizeControl = addOptimizeControl;
