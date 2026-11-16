@@ -97,19 +97,30 @@ function initialiseMap() {
   });
 }
 
+function parseCityParam(raw) {
+  if (!raw || raw === 'null') return null;
+  try {
+    var decoded = decodeURIComponent(raw);
+    // Handles City===%27Princeton%27 or City=='Princeton' or City=Princeton
+    decoded = decoded.replace(/^=+/, '').replace(/^'+|'+$/g, '').trim();
+    return decoded || null;
+  } catch (e) {
+    return raw;
+  }
+}
+
 function applyUrlFilters() {
   var cityParam = $.urlParam('City');
   var stts = $.urlParam('S');
   var searchname = $.urlParam('F');
   var visited = $.urlParam('P');
 
-  var city = null;
-  if (cityParam && cityParam !== 'null') {
-    try { city = decodeURIComponent(cityParam).replace(/==='?|'?/g, '').replace(/'/g, ''); } catch(e) { city = cityParam; }
-  }
+  var city = parseCityParam(cityParam);
   if (searchname) {
     try { searchname = decodeURIComponent(searchname); } catch(e) {}
   }
+
+  console.log('Parsed city:', city, 'status:', stts, 'name:', searchname, 'visited:', visited);
 
   var now = new Date();
   visibleLocations = locations.filter(function(loc) {
@@ -131,7 +142,7 @@ function applyUrlFilters() {
         var visit = new Date(loc.visitdate);
         if (!isNaN(visit.getTime())) {
           var days = (now - visit) / (1000 * 60 * 60 * 24);
-          if (visited === '0') return false; // has a date, so not "not yet"
+          if (visited === '0') return false;
           if (visited === '1' && days < 30) return false;
           if (visited === '3' && days < 90) return false;
           if (visited === '6' && days < 180) return false;
@@ -141,6 +152,7 @@ function applyUrlFilters() {
     return true;
   });
 
+  console.log('visible after filter:', visibleLocations.length);
   window.visibleLocations = visibleLocations;
   clearMarkers();
   setLocations(map, visibleLocations);
