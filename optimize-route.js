@@ -1,6 +1,6 @@
 /**
- * Optimize View: select stops from the visible map area,
- * but start the optimized route from the user's GPS location.
+ * Optimize View: uses only the currently visible (filtered) markers,
+ * limited to the map viewport, starting from GPS.
  */
 
 const AVG_VISIT_MINS = 3;
@@ -22,7 +22,7 @@ function addOptimizeControl(map) {
   controlUI.style.cursor = 'pointer';
   controlUI.style.marginBottom = '22px';
   controlUI.style.textAlign = 'center';
-  controlUI.title = 'Optimize stops in the current map view, starting from your location';
+  controlUI.title = 'Optimize the stops currently shown on the map';
   controlDiv.appendChild(controlUI);
 
   const controlText = document.createElement('div');
@@ -56,24 +56,25 @@ function optimizeCurrentView(map) {
     new google.maps.LatLng(ne.lat() + latSpan, ne.lng() + lngSpan)
   );
 
-  // Prefer real GPS as the route origin
+  // Use only the filtered set that is currently displayed
+  const source = window.visibleLocations || window.locations || [];
+
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const start = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        runOptimization(map, start, expanded);
+        runOptimization(map, start, expanded, source);
       },
       () => {
-        // Fallback to map center if GPS denied
         const center = map.getCenter();
         const start = { lat: center.lat(), lng: center.lng() };
-        runOptimization(map, start, expanded);
+        runOptimization(map, start, expanded, source);
       }
     );
   } else {
     const center = map.getCenter();
     const start = { lat: center.lat(), lng: center.lng() };
-    runOptimization(map, start, expanded);
+    runOptimization(map, start, expanded, source);
   }
 }
 
@@ -113,9 +114,8 @@ function getStopsInBounds(bounds, allLocations) {
   });
 }
 
-async function runOptimization(map, start, bounds) {
-  let candidates = getStopsInBounds(bounds, window.locations || locations);
-  // Prefer stops closer to the GPS start
+async function runOptimization(map, start, bounds, source) {
+  let candidates = getStopsInBounds(bounds, source);
   candidates = candidates
     .map(loc => ({
       ...loc,
@@ -125,7 +125,7 @@ async function runOptimization(map, start, bounds) {
   candidates = dedupeByLatLng(candidates).slice(0, MAX_STOPS);
 
   if (candidates.length < 2) {
-    alert('Not enough eligible stops in the current view.');
+    alert('Not enough eligible stops in the current filtered view.');
     return;
   }
 
@@ -135,15 +135,9 @@ async function runOptimization(map, start, bounds) {
   const intermediates = candidates.slice(0, -1);
 
   const body = {
-    origin: {
-      location: { latLng: { latitude: start.lat, longitude: start.lng } }
-    },
-    destination: {
-      location: { latLng: { latitude: destination.latitude, longitude: destination.longtitude } }
-    },
-    intermediates: intermediates.map(c => ({
-      location: { latLng: { latitude: c.latitude, longitude: c.longtitude } }
-    })),
+    origin: { location: { latLng: { latitude: start.lat, longitude: start.lng } } },
+    destination: { location: { latLng: { latitude: destination.latitude, longitude: destination.longtitude } } },
+    intermediates: intermediates.map(c => ({ location: { latLng: { latitude: c.latitude, longitude: c.longtitude } } })),
     travelMode: travelMode,
     optimizeWaypointOrder: true
   };
@@ -206,11 +200,8 @@ function haversine(a, b) {
 }
 
 function drawPolyline(map, encoded) {
-  if (currentPolyline) {
-    currentPolyline.setMap(null);
-  }
+  if (currentPolyline) currentPolyline.setMap(null);
   if (!encoded || !google.maps.geometry) return;
-
   const path = google.maps.geometry.encoding.decodePath(encoded);
   currentPolyline = new google.maps.Polyline({
     path: path,
@@ -239,15 +230,13 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start) {
   const modeText = travelMode === 'WALK' ? 'walking' : 'driving';
   const body = document.getElementById('route-panel-body');
 
-  let html = `<div class="meta">~${totalMins} min total &middot; ${modeText} &middot; ${orderedStops.length} stops<br>Starts from your location</div><ol>`;
+  let html = `<div class="meta">~${totalMins} min total &middot; ${modeText} &middot; ${orderedStops.length} stops<br>From filtered map view &middot; starts at GPS</div><ol>`;
   orderedStops.forEach((s) => {
     html += `<li>${s.name || s.address || 'Stop'}</li>`;
   });
   html += `</ol>`;
 
-  const waypoints = orderedStops
-    .map((s) => `${s.latitude},${s.longtitude}`)
-    .join('|');
+  const waypoints = orderedStops.map((s) => `${s.latitude},${s.longtitude}`).join('|');
   const dest = orderedStops[orderedStops.length - 1];
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${start.lat},${start.lng}&destination=${dest.latitude},${dest.longtitude}&waypoints=${waypoints}&travelmode=${modeText}`;
 
