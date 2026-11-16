@@ -1,10 +1,124 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="refresh" content="0; url=newindex.html">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jowla Map</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 20px; }
+  h1 { font-size: 22px; }
+  label { display: block; margin-top: 16px; font-weight: bold; }
+  select, input { width: 100%; padding: 10px; margin-top: 4px; font-size: 16px; box-sizing: border-box; }
+  button { margin-top: 24px; width: 100%; padding: 12px; font-size: 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; }
+</style>
 </head>
 <body>
-<p>Redirecting to map... <a href="newindex.html">Click here</a> if not redirected.</p>
+<h1>DFW Jowla Map</h1>
+
+<label>City</label>
+<select id="myCity">
+  <option value="All">All</option>
+  <option value="Plano">Plano</option>
+  <option value="Princeton">Princeton</option>
+  <option value="Frisco">Frisco</option>
+  <option value="McKinney">McKinney</option>
+  <option value="Allen">Allen</option>
+  <option value="Dallas">Dallas</option>
+  <option value="Fort Worth">Fort Worth</option>
+  <option value="Arlington">Arlington</option>
+  <option value="Irving">Irving</option>
+  <option value="Garland">Garland</option>
+  <option value="Grand Prairie">Grand Prairie</option>
+  <option value="Carrollton">Carrollton</option>
+  <option value="Richardson">Richardson</option>
+  <option value="Lewisville">Lewisville</option>
+  <option value="Flower Mound">Flower Mound</option>
+  <option value="The Colony">The Colony</option>
+  <option value="Prosper">Prosper</option>
+  <option value="Little Elm">Little Elm</option>
+  <option value="Wylie">Wylie</option>
+  <option value="Rowlett">Rowlett</option>
+  <option value="Sachse">Sachse</option>
+  <option value="Murphy">Murphy</option>
+  <option value="Melissa">Melissa</option>
+  <option value="Anna">Anna</option>
+  <option value="Parker">Parker</option>
+  <option value="Fairview">Fairview</option>
+  <option value="Lavon">Lavon</option>
+  <option value="Van Alstyne">Van Alstyne</option>
+  <option value="Sherman">Sherman</option>
+  <option value="Denton">Denton</option>
+  <option value="Grapevine">Grapevine</option>
+  <option value="Colleyville">Colleyville</option>
+  <option value="Keller">Keller</option>
+  <option value="Bedford">Bedford</option>
+  <option value="Euless">Euless</option>
+  <option value="Mansfield">Mansfield</option>
+  <option value="Mesquite">Mesquite</option>
+  <option value="DeSoto">DeSoto</option>
+  <option value="Duncanville">Duncanville</option>
+  <option value="Farmers Branch">Farmers Branch</option>
+  <option value="Coppell">Coppell</option>
+  <option value="Aubrey">Aubrey</option>
+  <option value="Krugerville">Krugerville</option>
+  <option value="ST Paul">ST Paul</option>
+  <option value="Valley Ranch">Valley Ranch</option>
+  <option value="Watauga">Watauga</option>
+  <option value="Greenville">Greenville</option>
+  <option value="Texarkana">Texarkana</option>
+  <option value="Broken Arrow">Broken Arrow</option>
+  <option value="Edmond">Edmond</option>
+  <option value="Norman">Norman</option>
+  <option value="Savannah">Savannah</option>
+</select>
+
+<label>Status</label>
+<select id="myStatus">
+  <option value="All">All</option>
+  <option value="S">Students</option>
+  <option value="K">Khususi</option>
+  <option value="F">Follow Ups</option>
+  <option value="W">3D</option>
+</select>
+
+<label>Visited</label>
+<select id="myVisited">
+  <option value="All">All</option>
+  <option value="0">Not Yet Visited</option>
+  <option value="6">More than 180 days</option>
+  <option value="3">More than 90 days</option>
+  <option value="1">More than 30 days</option>
+</select>
+
+<label>Name contains (optional)</label>
+<input id="search" type="text" placeholder="leave blank for all">
+
+<button onclick="RedirectURL()">Display Map</button>
+
+<script>
+function createDynamicURL() {
+  var URL = 'newindex.html';
+  var params = [];
+  var City = document.getElementById('myCity').value;
+  if (City !== 'All') {
+    params.push('City===' + encodeURIComponent("'" + City + "'"));
+  }
+  var Status = document.getElementById('myStatus').value;
+  if (Status !== 'All') {
+    params.push('S=' + Status);
+  }
+  var search = document.getElementById('search').value || 'Search';
+  params.push('F=' + encodeURIComponent(search));
+  var Visit = document.getElementById('myVisited').value;
+  if (Visit !== 'All') {
+    params.push('P=' + Visit);
+  }
+  if (params.length) URL += '?' + params.join('&');
+  return URL;
+}
+function RedirectURL() {
+  window.location = createDynamicURL();
+}
+</script>
 </body>
 </html>

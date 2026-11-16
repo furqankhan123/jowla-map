@@ -1,6 +1,6 @@
 var map, infoWindow;
-var locations = [];          // all non-DNV rows
-var visibleLocations = [];   // currently filtered set shown on the map
+var locations = [];
+var visibleLocations = [];
 var markers = [];
 var frisco = {lat: 33.0597, lng: -96.7512};
 
@@ -50,6 +50,12 @@ function handleLocationError(browserHasGeolocation, infoWindow, pos) {
 }
 
 function initialiseMap() {
+  $.urlParam = function(name){
+    var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
+    if (results == null) return null;
+    return results[1] || 0;
+  };
+
   $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1U7JJDnTvClhdpHCje29uLwTNCiBhdPfUPxzChbxoXNQ/values/DFWDB!A2:V?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ", function(data) {
     $(data.values).each(function() {
       var location = {};
@@ -78,8 +84,7 @@ function initialiseMap() {
     map = new google.maps.Map(document.getElementById('map'), mapOptions);
     infoWindow = new google.maps.InfoWindow;
 
-    buildFilterPanel();
-    applyFilters();
+    applyUrlFilters();
 
     var centerControlDiv = document.createElement('div');
     var centerControl = new CenterControl(centerControlDiv, map);
@@ -92,59 +97,53 @@ function initialiseMap() {
   });
 }
 
-function buildFilterPanel() {
-  var panel = document.createElement('div');
-  panel.id = 'filter-panel';
-  panel.innerHTML = `
-    <label>City</label>
-    <select id="filter-city"><option value="">All cities</option></select>
-    <label>Status</label>
-    <select id="filter-status">
-      <option value="">Any</option>
-      <option value="Student">Student</option>
-      <option value="Khususi">Khususi</option>
-      <option value="Follow">Follow</option>
-      <option value="Week">Week</option>
-    </select>
-    <label>Name contains</label>
-    <input id="filter-name" type="text" placeholder="optional">
-    <button id="filter-apply">Apply filters</button>
-    <div class="count" id="filter-count"></div>
-  `;
-  document.body.appendChild(panel);
+function applyUrlFilters() {
+  var cityParam = $.urlParam('City');
+  var stts = $.urlParam('S');
+  var searchname = $.urlParam('F');
+  var visited = $.urlParam('P');
 
-  // Populate cities
-  var cities = {};
-  locations.forEach(function(l) { if (l.city) cities[l.city] = true; });
-  var citySelect = document.getElementById('filter-city');
-  Object.keys(cities).sort().forEach(function(c) {
-    var opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = c;
-    citySelect.appendChild(opt);
-  });
+  var city = null;
+  if (cityParam && cityParam !== 'null') {
+    try { city = decodeURIComponent(cityParam).replace(/==='?|'?/g, '').replace(/'/g, ''); } catch(e) { city = cityParam; }
+  }
+  if (searchname) {
+    try { searchname = decodeURIComponent(searchname); } catch(e) {}
+  }
 
-  document.getElementById('filter-apply').addEventListener('click', applyFilters);
-}
-
-function applyFilters() {
-  var city = document.getElementById('filter-city').value;
-  var status = document.getElementById('filter-status').value;
-  var name = (document.getElementById('filter-name').value || '').toLowerCase();
-
+  var now = new Date();
   visibleLocations = locations.filter(function(loc) {
     if (city && loc.city !== city) return false;
-    if (status && !(loc.sts || '').toLowerCase().includes(status.toLowerCase())) return false;
-    if (name && !(loc.name || '').toLowerCase().includes(name)) return false;
+    if (stts && stts !== 'null') {
+      var s = (loc.sts || '').toLowerCase();
+      if (stts === 'S' && s.indexOf('student') === -1) return false;
+      if (stts === 'K' && s.indexOf('khususi') === -1) return false;
+      if (stts === 'F' && s.indexOf('follow') === -1) return false;
+      if (stts === 'W' && s.indexOf('week') === -1) return false;
+    }
+    if (searchname && searchname !== 'Search' && searchname !== 'null') {
+      if (!(loc.name || '').toLowerCase().includes(searchname.toLowerCase())) return false;
+    }
+    if (visited && visited !== 'All' && visited !== 'null') {
+      if (!loc.visitdate) {
+        if (visited !== '0') return false;
+      } else {
+        var visit = new Date(loc.visitdate);
+        if (!isNaN(visit.getTime())) {
+          var days = (now - visit) / (1000 * 60 * 60 * 24);
+          if (visited === '0') return false; // has a date, so not "not yet"
+          if (visited === '1' && days < 30) return false;
+          if (visited === '3' && days < 90) return false;
+          if (visited === '6' && days < 180) return false;
+        }
+      }
+    }
     return true;
   });
 
-  // Expose for the optimizer
   window.visibleLocations = visibleLocations;
-
   clearMarkers();
   setLocations(map, visibleLocations);
-  document.getElementById('filter-count').textContent = visibleLocations.length + ' stops shown';
 }
 
 function clearMarkers() {
