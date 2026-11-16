@@ -1,14 +1,13 @@
 /**
- * Optimize Nearby Route feature for Jowla Map
- * Uses the visible map viewport (plus a small margin) as the search area.
- * Then calls Routes API with optimizeWaypointOrder.
+ * Optimize View: select stops from the visible map area,
+ * but start the optimized route from the user's GPS location.
  */
 
 const AVG_VISIT_MINS = 3;
 const MAX_STOPS = 15;
 const DENSE_THRESHOLD_KM = 0.5;
 const RECENT_DAYS = 180;
-const BOUNDS_MARGIN = 0.15; // expand viewport by 15%
+const BOUNDS_MARGIN = 0.15;
 const API_KEY = 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ';
 
 let currentPolyline = null;
@@ -23,7 +22,7 @@ function addOptimizeControl(map) {
   controlUI.style.cursor = 'pointer';
   controlUI.style.marginBottom = '22px';
   controlUI.style.textAlign = 'center';
-  controlUI.title = 'Optimize stops in the current map view';
+  controlUI.title = 'Optimize stops in the current map view, starting from your location';
   controlDiv.appendChild(controlUI);
 
   const controlText = document.createElement('div');
@@ -48,7 +47,6 @@ function optimizeCurrentView(map) {
     return;
   }
 
-  // Expand the viewport a little so edge markers are included
   const ne = bounds.getNorthEast();
   const sw = bounds.getSouthWest();
   const latSpan = (ne.lat() - sw.lat()) * BOUNDS_MARGIN;
@@ -58,10 +56,25 @@ function optimizeCurrentView(map) {
     new google.maps.LatLng(ne.lat() + latSpan, ne.lng() + lngSpan)
   );
 
-  const center = map.getCenter();
-  const start = { lat: center.lat(), lng: center.lng() };
-
-  runOptimization(map, start, expanded);
+  // Prefer real GPS as the route origin
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const start = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        runOptimization(map, start, expanded);
+      },
+      () => {
+        // Fallback to map center if GPS denied
+        const center = map.getCenter();
+        const start = { lat: center.lat(), lng: center.lng() };
+        runOptimization(map, start, expanded);
+      }
+    );
+  } else {
+    const center = map.getCenter();
+    const start = { lat: center.lat(), lng: center.lng() };
+    runOptimization(map, start, expanded);
+  }
 }
 
 function isDoNotVisit(loc) {
@@ -80,31 +93,29 @@ function dedupeByLatLng(arr) {
   });
 }
 
-function getStopsInBounds(bounds, allLocations, maxCount) {
+function getStopsInBounds(bounds, allLocations) {
   if (!allLocations || !allLocations.length) return [];
 
   const now = new Date();
-  return allLocations
-    .filter((loc) => {
-      if (!loc.latitude || !loc.longtitude) return false;
-      if (isDoNotVisit(loc)) return false;
-      const latLng = new google.maps.LatLng(loc.latitude, loc.longtitude);
-      if (!bounds.contains(latLng)) return false;
-      if (loc.visitdate) {
-        const visit = new Date(loc.visitdate);
-        if (!isNaN(visit.getTime())) {
-          const daysAgo = (now - visit) / (1000 * 60 * 60 * 24);
-          if (daysAgo < RECENT_DAYS) return false;
-        }
+  return allLocations.filter((loc) => {
+    if (!loc.latitude || !loc.longtitude) return false;
+    if (isDoNotVisit(loc)) return false;
+    const latLng = new google.maps.LatLng(loc.latitude, loc.longtitude);
+    if (!bounds.contains(latLng)) return false;
+    if (loc.visitdate) {
+      const visit = new Date(loc.visitdate);
+      if (!isNaN(visit.getTime())) {
+        const daysAgo = (now - visit) / (1000 * 60 * 60 * 24);
+        if (daysAgo < RECENT_DAYS) return false;
       }
-      return true;
-    })
-    .slice(0, maxCount * 3); // keep a bit extra before distance sort
+    }
+    return true;
+  });
 }
 
 async function runOptimization(map, start, bounds) {
-  let candidates = getStopsInBounds(bounds, window.locations || locations, MAX_STOPS);
-  // Sort by distance from map center so the closest ones are preferred
+  let candidates = getStopsInBounds(bounds, window.locations || locations);
+  // Prefer stops closer to the GPS start
   candidates = candidates
     .map(loc => ({
       ...loc,
@@ -228,7 +239,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start) {
   const modeText = travelMode === 'WALK' ? 'walking' : 'driving';
   const body = document.getElementById('route-panel-body');
 
-  let html = `<div class="meta">~${totalMins} min total &middot; ${modeText} &middot; ${orderedStops.length} stops</div><ol>`;
+  let html = `<div class="meta">~${totalMins} min total &middot; ${modeText} &middot; ${orderedStops.length} stops<br>Starts from your location</div><ol>`;
   orderedStops.forEach((s) => {
     html += `<li>${s.name || s.address || 'Stop'}</li>`;
   });
