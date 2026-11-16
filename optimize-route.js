@@ -1,12 +1,14 @@
 /**
  * Optimize Nearby Route feature for Jowla Map
- * Uses Google Routes API (computeRoutes) with optimizeWaypointOrder.
+ * Uses the visible map viewport (plus a small margin) as the search area.
+ * Then calls Routes API with optimizeWaypointOrder.
  */
 
 const AVG_VISIT_MINS = 3;
 const MAX_STOPS = 15;
 const DENSE_THRESHOLD_KM = 0.5;
 const RECENT_DAYS = 180;
+const BOUNDS_MARGIN = 0.15; // expand viewport by 15%
 const API_KEY = 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ';
 
 let currentPolyline = null;
@@ -21,7 +23,7 @@ function addOptimizeControl(map) {
   controlUI.style.cursor = 'pointer';
   controlUI.style.marginBottom = '22px';
   controlUI.style.textAlign = 'center';
-  controlUI.title = 'Optimize nearby unvisited stops';
+  controlUI.title = 'Optimize stops in the current map view';
   controlDiv.appendChild(controlUI);
 
   const controlText = document.createElement('div');
@@ -31,30 +33,35 @@ function addOptimizeControl(map) {
   controlText.style.lineHeight = '38px';
   controlText.style.paddingLeft = '8px';
   controlText.style.paddingRight = '8px';
-  controlText.innerHTML = 'Optimize Nearby';
+  controlText.innerHTML = 'Optimize View';
   controlUI.appendChild(controlText);
 
-  controlUI.addEventListener('click', () => optimizeNearbyRoute(map));
+  controlUI.addEventListener('click', () => optimizeCurrentView(map));
   controlDiv.index = 2;
   map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(controlDiv);
 }
 
-function optimizeNearbyRoute(map) {
-  if (!navigator.geolocation) {
-    alert('Geolocation is not supported by this browser.');
+function optimizeCurrentView(map) {
+  const bounds = map.getBounds();
+  if (!bounds) {
+    alert('Map bounds not ready');
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const start = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      runOptimization(map, start);
-    },
-    () => {
-      const center = map.getCenter();
-      runOptimization(map, { lat: center.lat(), lng: center.lng() });
-    }
+  // Expand the viewport a little so edge markers are included
+  const ne = bounds.getNorthEast();
+  const sw = bounds.getSouthWest();
+  const latSpan = (ne.lat() - sw.lat()) * BOUNDS_MARGIN;
+  const lngSpan = (ne.lng() - sw.lng()) * BOUNDS_MARGIN;
+  const expanded = new google.maps.LatLngBounds(
+    new google.maps.LatLng(sw.lat() - latSpan, sw.lng() - lngSpan),
+    new google.maps.LatLng(ne.lat() + latSpan, ne.lng() + lngSpan)
   );
+
+  const center = map.getCenter();
+  const start = { lat: center.lat(), lng: center.lng() };
+
+  runOptimization(map, start, expanded);
 }
 
 function isDoNotVisit(loc) {
@@ -73,12 +80,41 @@ function dedupeByLatLng(arr) {
   });
 }
 
-async function runOptimization(map, start) {
-  let candidates = getNearestUnvisited(start, window.locations || locations, MAX_STOPS * 2);
+function getStopsInBounds(bounds, allLocations, maxCount) {
+  if (!allLocations || !allLocations.length) return [];
+
+  const now = new Date();
+  return allLocations
+    .filter((loc) => {
+      if (!loc.latitude || !loc.longtitude) return false;
+      if (isDoNotVisit(loc)) return false;
+      const latLng = new google.maps.LatLng(loc.latitude, loc.longtitude);
+      if (!bounds.contains(latLng)) return false;
+      if (loc.visitdate) {
+        const visit = new Date(loc.visitdate);
+        if (!isNaN(visit.getTime())) {
+          const daysAgo = (now - visit) / (1000 * 60 * 60 * 24);
+          if (daysAgo < RECENT_DAYS) return false;
+        }
+      }
+      return true;
+    })
+    .slice(0, maxCount * 3); // keep a bit extra before distance sort
+}
+
+async function runOptimization(map, start, bounds) {
+  let candidates = getStopsInBounds(bounds, window.locations || locations, MAX_STOPS);
+  // Sort by distance from map center so the closest ones are preferred
+  candidates = candidates
+    .map(loc => ({
+      ...loc,
+      dist: haversine(start, { lat: loc.latitude, lng: loc.longtitude })
+    }))
+    .sort((a, b) => a.dist - b.dist);
   candidates = dedupeByLatLng(candidates).slice(0, MAX_STOPS);
 
   if (candidates.length < 2) {
-    alert('Not enough nearby unvisited stops found.');
+    alert('Not enough eligible stops in the current view.');
     return;
   }
 
@@ -138,31 +174,6 @@ async function runOptimization(map, start) {
   } catch (e) {
     alert('Request failed: ' + e.message);
   }
-}
-
-function getNearestUnvisited(start, allLocations, maxCount) {
-  if (!allLocations || !allLocations.length) return [];
-
-  const now = new Date();
-  return allLocations
-    .filter((loc) => {
-      if (!loc.latitude || !loc.longtitude) return false;
-      if (isDoNotVisit(loc)) return false;
-      if (loc.visitdate) {
-        const visit = new Date(loc.visitdate);
-        if (!isNaN(visit.getTime())) {
-          const daysAgo = (now - visit) / (1000 * 60 * 60 * 24);
-          if (daysAgo < RECENT_DAYS) return false;
-        }
-      }
-      return true;
-    })
-    .map((loc) => ({
-      ...loc,
-      dist: haversine(start, { lat: loc.latitude, lng: loc.longtitude }),
-    }))
-    .sort((a, b) => a.dist - b.dist)
-    .slice(0, maxCount);
 }
 
 function isDenseCluster(points) {
