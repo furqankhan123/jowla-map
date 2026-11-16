@@ -4,8 +4,9 @@
  */
 
 const AVG_VISIT_MINS = 3;
-const MAX_STOPS = 12;
+const MAX_STOPS = 15;
 const DENSE_THRESHOLD_KM = 0.5;
+const RECENT_DAYS = 180; // was 30; looser so more stops appear
 const API_KEY = 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ';
 
 let currentPolyline = null;
@@ -56,8 +57,20 @@ function optimizeNearbyRoute(map) {
   );
 }
 
+function dedupeByLatLng(arr) {
+  const seen = new Set();
+  return arr.filter(loc => {
+    if (!loc.latitude || !loc.longtitude) return false;
+    const key = Math.round(loc.latitude * 10000) + ',' + Math.round(loc.longtitude * 10000);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function runOptimization(map, start) {
-  const candidates = getNearestUnvisited(start, window.locations || locations, MAX_STOPS);
+  let candidates = getNearestUnvisited(start, window.locations || locations, MAX_STOPS * 2);
+  candidates = dedupeByLatLng(candidates).slice(0, MAX_STOPS);
 
   if (candidates.length < 2) {
     alert('Not enough nearby unvisited stops found.');
@@ -66,7 +79,6 @@ async function runOptimization(map, start) {
 
   const travelMode = isDenseCluster(candidates) ? 'WALK' : 'DRIVE';
 
-  // Last candidate is temporary destination; optimizer reorders intermediates
   const destination = candidates[candidates.length - 1];
   const intermediates = candidates.slice(0, -1);
 
@@ -109,8 +121,9 @@ async function runOptimization(map, start) {
     }
 
     const order = route.optimizedIntermediateWaypointIndex || [];
-    const ordered = order.map(i => intermediates[i]);
-    ordered.push(destination); // destination stays last in this simple setup
+    let ordered = order.map(i => intermediates[i]);
+    ordered.push(destination);
+    ordered = dedupeByLatLng(ordered);
 
     const durationSecs = parseInt(route.duration || '0', 10);
     const totalMins = Math.round(durationSecs / 60) + ordered.length * AVG_VISIT_MINS;
@@ -133,7 +146,7 @@ function getNearestUnvisited(start, allLocations, maxCount) {
         const visit = new Date(loc.visitdate);
         if (!isNaN(visit.getTime())) {
           const daysAgo = (now - visit) / (1000 * 60 * 60 * 24);
-          if (daysAgo < 30) return false;
+          if (daysAgo < RECENT_DAYS) return false;
         }
       }
       return true;
@@ -198,7 +211,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start) {
   const modeText = travelMode === 'WALK' ? 'walking' : 'driving';
   const body = document.getElementById('route-panel-body');
 
-  let html = `<div class="meta">~${totalMins} min total &middot; ${modeText}</div><ol>`;
+  let html = `<div class="meta">~${totalMins} min total &middot; ${modeText} &middot; ${orderedStops.length} stops</div><ol>`;
   orderedStops.forEach((s) => {
     html += `<li>${s.name || s.address || 'Stop'}</li>`;
   });
