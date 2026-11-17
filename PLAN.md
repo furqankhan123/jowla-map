@@ -163,7 +163,7 @@ Not built until routing supports mixed modes (currently one `travelMode` per rou
 ### E. Implement the Apple Maps change  [DONE 0.11.0]
 Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, "Preferred maps app" setting, popup second button, both apps in the sheet, 15-stop Apple segments). Steps 3-6 are now done, so this is the next code task.
 
-### F. Start and end locations in the route and total time  [OPEN]
+### F. Start and end locations in the route and total time  [DONE 0.12.0, saved places not built]
 - **Goal:** the user's day starts and ends at a known place (home, office, car). Total time must include getting from the start to the first stop and from the last stop to the end, and the end can differ from the start.
 - **Options (Route settings):** "Start" = GPS (default) / custom point (existing marker "Set as start") / saved place; "End" = Same as start (default) / Different location. "Different location" is set by the same marker-popup action ("Set as end", next to "Set as start") or by a saved place; shown as a green flag marker, with "clear" like start. Persist in `opts` and localStorage with the route.
 - **Routing:** in `requestRoute` (`optimize-route.js` ~245) when an end is set, use it as `destination` and make all candidates intermediates with `optimizeWaypointOrder`; for "same as start" the destination equals the origin (round trip). The old last-candidate-as-destination behavior is removed: the end is always a location, never a stop. The final leg adds an entry to `legSecs`.

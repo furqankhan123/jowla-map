@@ -1,5 +1,5 @@
 /* Jowla Map service worker. Bump CACHE_VERSION to invalidate caches. */
-const CACHE_VERSION = 'v0.11.0';
+const CACHE_VERSION = 'v0.12.0';
 const SHELL_CACHE = 'jowla-shell-' + CACHE_VERSION;
 const DATA_CACHE = 'jowla-data-' + CACHE_VERSION;
 const SHELL = [

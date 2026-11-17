@@ -300,6 +300,7 @@ function createMarker(map, location, infowindow) {
       '<a class="iw-btn alt" href="' + e(nb.other.url) + '" target="_blank" rel="noopener">Open in ' + nb.other.label + '</a>' +
       '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__pendingStart);}">Visit Details</a>' +
       '<button type="button" class="iw-btn alt" onclick="if(window.setRouteStart){setRouteStart(window.__pendingStart);}return false;">Set as start</button>' +
+      '<button type="button" class="iw-btn alt" onclick="if(window.setRouteEnd){setRouteEnd(window.__pendingStart);}return false;">Set as end</button>' +
       '</div>');
     infowindow.open(map, marker);
   });

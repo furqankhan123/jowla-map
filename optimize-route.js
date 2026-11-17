@@ -13,7 +13,7 @@ const ROUTE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_FIT_ITERATIONS = 3;
 
 // User-adjustable settings (persisted)
-const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null };
+const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, customEnd: null };
 try {
   Object.assign(opts, JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'));
 } catch (e) {}
@@ -30,6 +30,7 @@ const MAX_APPLE_STOPS = 15;
 let currentPolyline = null;
 let routeMarkers = [];
 let startMarker = null;
+let endMarker = null;
 let mapRef = null;
 
 /** Called from the marker info window "Set as start" link. */
@@ -46,7 +47,35 @@ function clearRouteStart() {
   drawStartMarker();
   refreshSettingsUi();
 }
+/** Called from the marker info window "Set as end" button. */
+function setRouteEnd(loc) {
+  if (!loc || !mapRef) return;
+  opts.customEnd = { lat: loc.latitude, lng: loc.longtitude, name: loc.name || loc.address || 'Custom end' };
+  saveOpts();
+  drawStartMarker();
+  refreshSettingsUi();
+}
+function clearRouteEnd() {
+  opts.customEnd = null;
+  saveOpts();
+  drawStartMarker();
+  refreshSettingsUi();
+}
 function drawStartMarker() {
+  if (endMarker) { endMarker.setMap(null); endMarker = null; }
+  if (opts.customEnd && mapRef) {
+    endMarker = new google.maps.Marker({
+      position: { lat: opts.customEnd.lat, lng: opts.customEnd.lng },
+      map: mapRef,
+      title: 'Route end: ' + opts.customEnd.name,
+      zIndex: 2000,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE, scale: 11,
+        fillColor: '#0b8043', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3
+      },
+      label: { text: 'E', color: '#fff', fontWeight: 'bold', fontSize: '12px' }
+    });
+  }
   if (startMarker) { startMarker.setMap(null); startMarker = null; }
   if (!opts.customStart || !mapRef) return;
   startMarker = new google.maps.Marker({
@@ -83,7 +112,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.11.0';
+const APP_VERSION = '0.12.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -235,6 +264,7 @@ async function runOptimization(map, start, bounds, source) {
     totalMins: result.totalMins,
     travelMode: result.travelMode,
     start: start,
+    end: opts.customEnd ? { lat: opts.customEnd.lat, lng: opts.customEnd.lng, name: opts.customEnd.name } : { lat: start.lat, lng: start.lng, name: opts.customStart ? opts.customStart.name : 'start', same: true },
     encoded: result.encoded,
     savedAt: Date.now()
   };
@@ -244,12 +274,13 @@ async function runOptimization(map, start, bounds, source) {
 
 async function requestRoute(start, candidates) {
   const travelMode = isDenseCluster(candidates) ? 'WALK' : 'DRIVE';
-  const destination = candidates[candidates.length - 1];
-  const intermediates = candidates.slice(0, -1);
+  // The end is always a location (custom end, else back to the start), never a stop.
+  const endPt = opts.customEnd ? { lat: opts.customEnd.lat, lng: opts.customEnd.lng } : { lat: start.lat, lng: start.lng };
+  const intermediates = candidates;
 
   const body = {
     origin: { location: { latLng: { latitude: start.lat, longitude: start.lng } } },
-    destination: { location: { latLng: { latitude: destination.latitude, longitude: destination.longtitude } } },
+    destination: { location: { latLng: { latitude: endPt.lat, longitude: endPt.lng } } },
     intermediates: intermediates.map(c => ({ location: { latLng: { latitude: c.latitude, longitude: c.longtitude } } })),
     travelMode: travelMode,
     optimizeWaypointOrder: true
@@ -281,7 +312,6 @@ async function requestRoute(start, candidates) {
 
     const order = route.optimizedIntermediateWaypointIndex || intermediates.map((_, i) => i);
     const ordered = order.map(i => intermediates[i]);
-    ordered.push(destination);
 
     const durationSecs = parseInt(route.duration || '0', 10);
     const legSecs = (route.legs || []).map(l => parseInt(l.duration || '0', 10));
@@ -290,7 +320,7 @@ async function requestRoute(start, candidates) {
       legSecs,
       travelMode,
       encoded: route.polyline && route.polyline.encodedPolyline,
-      totalMins: Math.round(durationSecs / 60) + ordered.length * AVG_VISIT_MINS
+      totalMins: Math.round(durationSecs / 60) + ordered.length * AVG_VISIT_MINS // all legs incl. the end leg
     };
   } catch (e) {
     showToast('Request failed: ' + e.message, { type: 'error' });
@@ -336,7 +366,7 @@ document.addEventListener('visibilitychange', () => {
 function updateDoneUi() {
   if (!currentRoute) return;
   const stops = currentRoute.stops;
-  document.querySelectorAll('#route-results .stop-row').forEach((row) => {
+  document.querySelectorAll('#route-results .stop-row:not(.end-row)').forEach((row) => {
     const done = !!stops[+row.dataset.i].done;
     row.classList.toggle('done', done);
     const b = row.querySelector('.done-btn');
@@ -358,7 +388,7 @@ function updateDoneUi() {
 
 function renderRoute(map, route) {
   currentRoute = route;
-  showRoutePanel(route.stops, route.totalMins, route.travelMode, route.start, route.legSecs);
+  showRoutePanel(route.stops, route.totalMins, route.travelMode, route.start, route.legSecs, route.end);
   drawPolyline(map, route.encoded);
   drawNumberedMarkers(map, route.stops);
   updateDoneUi();
@@ -595,6 +625,9 @@ function refreshSettingsUi() {
       <label>Skip visited within ${sel('opt-days', opts.recentDays, [[30, '30 days'], [90, '90 days'], [180, '180 days']])}</label>
       <label class="chk"><input type="checkbox" id="opt-recent"${opts.includeRecent ? ' checked' : ''}> Include recently visited</label>
       <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
+      <div class="start-row">End: ${opts.customEnd
+        ? `<b>${escapeHtml(opts.customEnd.name)}</b> <a href="#" id="opt-clear-end">clear</a>`
+        : 'Same as start (tap a pin → “Set as end”)'}</div>
       <div class="start-row">Start: ${opts.customStart
         ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
         : 'GPS (or tap a pin → “Set as start”)'}</div>
@@ -608,12 +641,14 @@ function refreshSettingsUi() {
   document.getElementById('opt-recent').addEventListener('change', (e) => { opts.includeRecent = e.target.checked; saveOpts(); });
   document.getElementById('opt-nav').addEventListener('change', (e) => {
     setNavPref(e.target.value);
-    if (currentRoute) { showRoutePanel(currentRoute.stops, currentRoute.totalMins, currentRoute.travelMode, currentRoute.start, currentRoute.legSecs); }
+    if (currentRoute) { showRoutePanel(currentRoute.stops, currentRoute.totalMins, currentRoute.travelMode, currentRoute.start, currentRoute.legSecs, currentRoute.end); }
   });
   const rerun = document.getElementById('opt-rerun');
   rerun.disabled = optimizing;
   rerun.addEventListener('click', () => optimizeCurrentView(mapRef));
   const clr = document.getElementById('opt-clear-start');
+  const clrE = document.getElementById('opt-clear-end');
+  if (clrE) clrE.addEventListener('click', (e) => { e.preventDefault(); clearRouteEnd(); });
   if (clr) clr.addEventListener('click', (e) => { e.preventDefault(); clearRouteStart(); });
   if (window.bindSyncSettings) bindSyncSettings();
 }
@@ -622,17 +657,25 @@ function fmtTime(d) {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
+function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end) {
   const panel = ensurePanel();
   const modeText = travelMode === 'WALK' ? 'walking' : 'driving';
   const body = document.getElementById('route-results');
   const e = escapeHtml;
 
+  const endStop = end ? { latitude: end.lat, longtitude: end.lng, name: end.name } : null;
+  let endEta = '';
+  if (endStop && legSecs && legSecs.length > orderedStops.length) {
+    const tEnd = Date.now() + (legSecs.reduce((a, b) => a + b, 0) + orderedStops.length * AVG_VISIT_MINS * 60) * 1000;
+    endEta = ` · ends at ${endStop.name} ${fmtTime(new Date(tEnd))}`;
+  }
   document.getElementById('route-summary').textContent =
-    `${orderedStops.length} stops · ~${totalMins} min · ${modeText}`;
+    `${orderedStops.length} stops · ~${totalMins} min · ${modeText}${endEta}`;
+  // Navigation links run to the end point as the final destination.
+  const navStops = endStop ? orderedStops.concat([endStop]) : orderedStops;
 
-  const googleSegs = buildGoogleMapsSegments(orderedStops, start, modeText);
-  const appleSegs = buildAppleMapsSegments(orderedStops, start, modeText);
+  const googleSegs = buildGoogleMapsSegments(navStops, start, modeText);
+  const appleSegs = buildAppleMapsSegments(navStops, start, modeText);
   const segBtn = (seg, app, label) =>
     `<a class="nav-btn${app === 'apple' ? ' apple' : ''}" href="${e(seg.url)}" target="_blank" rel="noopener">${e(label)}</a>`;
   const appName = (app) => (app === 'apple' ? 'Apple Maps' : 'Google Maps');
@@ -665,6 +708,13 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
       `<a class="go alt" href="${e(nb.other.url)}" target="_blank" rel="noopener" title="Open in ${nb.other.label}">${nb.other.app === 'apple' ? 'Apple' : 'Google'}</a></li>`;
     t += AVG_VISIT_MINS * 60 * 1000; // time spent at this stop
   });
+  if (endStop) {
+    t += ((legSecs && legSecs[orderedStops.length]) || 0) * 1000;
+    const eEta = legSecs && legSecs.length > orderedStops.length ? `<span class="eta">${fmtTime(new Date(t))}</span>` : '';
+    const nbE = navButtons(endStop.latitude, endStop.longtitude);
+    html += `<li class="stop-row end-row" data-end="1"><span class="num end">E</span><span class="nm">${eEta}${e(end.same ? 'End: back at ' + end.name : 'End: ' + end.name)}</span>` +
+      `<a class="go" href="${e(nbE.primary.url)}" target="_blank" rel="noopener">Go</a></li>`;
+  }
   html += `</ol>`;
 
   // Remaining navigation options: later segments of the preferred app, then every segment of the other app
@@ -672,7 +722,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
   segsFor(otherApp).forEach((seg, idx) => html += segBtn(seg, otherApp, 'Open in ' + segLabel(otherApp, idx)));
 
   body.innerHTML = html;
-  body.querySelectorAll('.stop-row').forEach((row) => {
+  body.querySelectorAll('.stop-row:not(.end-row)').forEach((row) => {
     row.addEventListener('click', (ev) => {
       const s = orderedStops[+row.dataset.i];
       if (ev.target.closest('a.visit')) { markStopDone(s); return; }
@@ -706,3 +756,4 @@ window.clearRoute = function () {
 };
 window.addOptimizeControl = addOptimizeControl;
 window.setRouteStart = setRouteStart;
+window.setRouteEnd = setRouteEnd;

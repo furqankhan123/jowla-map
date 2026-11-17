@@ -209,3 +209,5 @@ summary.settings-btn .chev { margin-left: auto; transition: transform .2s; }
 details[open] > summary.settings-btn .chev { transform: rotate(180deg); }
 summary.settings-btn:active { background: #dbe7fb; }
 summary.settings-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.stop-row .num.end { background: #0b8043; }
+.stop-row.end-row { cursor: default; }

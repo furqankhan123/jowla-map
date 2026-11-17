@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.12.0]
+- Route start/end: "Set as end" in the marker popup, end marker, round trip by default; total time and ETAs include the final leg; nav links end at the end point.
+- Route settings and Sheet sync styled as buttons.
+
 ## [0.11.0]
 - Apple Maps restored on all platforms: shared `nav.js` (`navLinks`), "Preferred maps app" setting, popup and route rows show both apps, Apple routes split into 15-stop segments; `isIOS` removed.
 
