@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.9.0]
+### Added
+- Cluster suggestions: the ✦ button lists the densest groups of eligible stops in view; tap to highlight, or Optimize to route just that cluster.
+
 ## [0.8.0]
 ### Added
 - PWA: web manifest, icons, and a service worker (app shell cached; Sheets data network-first with cached fallback). Installable to the home screen.

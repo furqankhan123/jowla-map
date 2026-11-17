@@ -162,16 +162,16 @@ body.sheet-expanded #fab-group { display: none; }
 .iw .iw-name { padding-right: 36px; }
 
 /* In-map filter sheet */
-#filter-sheet {
+#filter-sheet, #cluster-sheet {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 1100;
     background: #fff; border-radius: 16px 16px 0 0; box-shadow: 0 -2px 12px rgba(0,0,0,.3);
     padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); box-sizing: border-box;
     max-height: 90dvh; overflow-y: auto; font-size: 15px;
     transform: translateY(105%); transition: transform .2s ease; visibility: hidden;
 }
-#filter-sheet.open { transform: none; visibility: visible; }
-#filter-sheet .fs-head { display: flex; justify-content: space-between; align-items: center; font-size: 17px; }
-#filter-sheet .fs-head button { background: none; border: none; font-size: 26px; min-width: 44px; min-height: 44px; color: #555; cursor: pointer; }
+#filter-sheet.open, #cluster-sheet.open { transform: none; visibility: visible; }
+#filter-sheet .fs-head, #cluster-sheet .fs-head { display: flex; justify-content: space-between; align-items: center; font-size: 17px; }
+#filter-sheet .fs-head, #cluster-sheet .fs-head button { background: none; border: none; font-size: 26px; min-width: 44px; min-height: 44px; color: #555; cursor: pointer; }
 #filter-sheet label { display: block; margin-top: 10px; font-weight: bold; }
 #filter-sheet select, #filter-sheet input { display: block; width: 100%; height: 48px; margin-top: 4px; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
 #filter-sheet .fs-count { margin-top: 10px; color: #555; text-align: center; }
@@ -179,5 +179,12 @@ body.sheet-expanded #fab-group { display: none; }
 #filter-sheet .fs-btns button { flex: 1; height: 48px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; background: var(--blue); color: #fff; cursor: pointer; }
 #filter-sheet .fs-btns .fs-alt { background: #eef3fd; color: var(--blue); }
 @media (min-width: 640px) {
-    #filter-sheet { left: 10px; right: auto; bottom: 10px; width: 340px; border-radius: 8px; }
+    #filter-sheet, #cluster-sheet { left: 10px; right: auto; bottom: 10px; width: 340px; border-radius: 8px; }
 }
+
+/* Cluster sheet rows */
+.cs-row { display: flex; gap: 8px; margin-top: 8px; }
+.cs-pick { flex: 1; min-height: 56px; text-align: left; padding: 8px 12px; background: #f1f3f4; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+.cs-pick .cs-sub { display: block; color: #555; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-go { flex: none; min-width: 96px; border: none; border-radius: 8px; background: var(--blue); color: #fff; font-size: 15px; font-weight: bold; cursor: pointer; }
+.cs-empty { padding: 16px 0; color: #555; }

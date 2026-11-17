@@ -91,6 +91,8 @@ function initialiseMap() {
     applyUrlFilters();
 
     document.getElementById('locate-fab').addEventListener('click', locateUser);
+    var cf = document.getElementById('cluster-fab');
+    if (cf) cf.addEventListener('click', function() { if (window.suggestClusters) suggestClusters(); });
     var ff = document.getElementById('filter-fab');
     if (ff) ff.addEventListener('click', openFilterSheet);
 

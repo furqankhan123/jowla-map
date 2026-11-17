@@ -83,7 +83,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.8.0';
+const APP_VERSION = '0.9.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -125,9 +125,9 @@ function addOptimizeControl(map) {
   restoreLastRoute(map);
 }
 
-function optimizeCurrentView(map) {
+function optimizeCurrentView(map, override) {
   if (optimizing) return;
-  const bounds = map.getBounds();
+  const bounds = override ? override.bounds : map.getBounds();
   if (!bounds) {
     showToast('Map not ready yet', { type: 'error' });
     return;
@@ -136,15 +136,16 @@ function optimizeCurrentView(map) {
 
   const ne = bounds.getNorthEast();
   const sw = bounds.getSouthWest();
-  const latSpan = (ne.lat() - sw.lat()) * BOUNDS_MARGIN;
-  const lngSpan = (ne.lng() - sw.lng()) * BOUNDS_MARGIN;
+  const margin = override ? 0.3 : BOUNDS_MARGIN;
+  const latSpan = (ne.lat() - sw.lat()) * margin;
+  const lngSpan = (ne.lng() - sw.lng()) * margin;
   const expanded = new google.maps.LatLngBounds(
     new google.maps.LatLng(sw.lat() - latSpan, sw.lng() - lngSpan),
     new google.maps.LatLng(ne.lat() + latSpan, ne.lng() + lngSpan)
   );
 
   // Use only the filtered set that is currently displayed
-  const source = window.visibleLocations || window.locations || [];
+  const source = override ? override.source : (window.visibleLocations || window.locations || []);
   const run = (start) => runOptimization(map, start, expanded, source)
     .catch((e) => showToast('Optimize failed: ' + e.message, { type: 'error' }))
     .finally(() => setBusy(false));
