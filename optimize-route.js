@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.16.1';
+const APP_VERSION = '0.16.2';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -498,6 +498,7 @@ function ensurePanel() {
     e.stopPropagation();
     panel.classList.remove('visible', 'minimized');
     document.body.classList.add('no-sheet');
+    document.body.classList.remove('sheet-expanded'); // otherwise the floating buttons stay hidden
     syncMin();
   });
 

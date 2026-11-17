@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.16.2]
+- Closing the route sheet while half/full open no longer hides the floating buttons.
+
 ## [0.16.1]
 - End point search uses Places API (New) (`AutocompleteSuggestion`) instead of the legacy widget; legacy Places is unavailable for new projects. Geocoder fallback kept.
 
