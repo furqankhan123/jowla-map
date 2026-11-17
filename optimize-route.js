@@ -22,10 +22,6 @@ function saveOpts() {
 }
 const API_KEY = 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ';
 
-// Google Maps URL limit: max 9 intermediate waypoints
-const MAX_GM_WAYPOINTS = 9;
-// Apple Maps practical limit ~15 total points
-const MAX_APPLE_STOPS = 15;
 
 let currentPolyline = null;
 let routeMarkers = [];
@@ -83,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.13.0';
+const APP_VERSION = '0.14.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -438,77 +434,6 @@ function drawPolyline(map, encoded) {
   });
 }
 
-/**
- * Build Google Maps direction segments.
- * Each segment has at most MAX_GM_WAYPOINTS intermediate points.
- * Segments overlap at the end point so the driver can continue.
- */
-function buildGoogleMapsSegments(orderedStops, start, modeText) {
-  const segments = [];
-  if (!orderedStops.length) return segments;
-
-  let origin = start;
-  let remaining = orderedStops.slice();
-
-  while (remaining.length > 0) {
-    // Take up to MAX_GM_WAYPOINTS intermediates + 1 destination
-    const chunkSize = Math.min(remaining.length, MAX_GM_WAYPOINTS + 1);
-    const chunk = remaining.slice(0, chunkSize);
-    const dest = chunk[chunk.length - 1];
-    const intermediates = chunk.slice(0, -1);
-
-    const waypoints = intermediates.map(s => `${s.latitude},${s.longtitude}`).join('|');
-    const originStr = `${origin.lat},${origin.lng}`;
-    const destStr = `${dest.latitude},${dest.longtitude}`;
-
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&travelmode=${modeText}`;
-    if (waypoints) {
-      url += `&waypoints=${waypoints}`;
-    }
-
-    const startIdx = orderedStops.indexOf(chunk[0]);
-    const endIdx = orderedStops.indexOf(dest);
-    segments.push({
-      url,
-      label: `Stops ${startIdx + 1}–${endIdx + 1}`,
-      stopCount: chunk.length
-    });
-
-    // Next segment starts at the end of this one
-    origin = { lat: dest.latitude, lng: dest.longtitude };
-    remaining = remaining.slice(chunkSize - 1); // overlap by 1 so continuity is clear
-    if (remaining.length <= 1) break; // avoid tiny trailing segments
-  }
-
-  return segments;
-}
-
-/**
- * Build Apple Maps multi-stop URLs, split into segments of at most MAX_APPLE_STOPS
- * stops (segments overlap at the end point, like the Google ones).
- */
-function buildAppleMapsSegments(orderedStops, start, modeText) {
-  const segments = [];
-  if (!orderedStops.length) return segments;
-  const mode = modeText === 'walking' ? 'walking' : 'driving';
-  let origin = start;
-  let remaining = orderedStops.slice();
-  while (remaining.length > 0) {
-    const chunk = remaining.slice(0, Math.min(remaining.length, MAX_APPLE_STOPS));
-    const dest = chunk[chunk.length - 1];
-    let url = `https://maps.apple.com/directions?source=${origin.lat},${origin.lng}&destination=${dest.latitude},${dest.longtitude}&mode=${mode}`;
-    chunk.slice(0, -1).forEach(s => { url += `&waypoint=${s.latitude},${s.longtitude}`; });
-    segments.push({
-      url,
-      label: `Stops ${orderedStops.indexOf(chunk[0]) + 1}–${orderedStops.indexOf(dest) + 1}`
-    });
-    origin = { lat: dest.latitude, lng: dest.longtitude };
-    remaining = remaining.slice(chunk.length - 1);
-    if (remaining.length <= 1) break;
-  }
-  return segments;
-}
-
 const SHEET_STATES = ['peek', 'half', 'full'];
 
 function setSheet(state) {
@@ -702,10 +627,8 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
     const detailsUrl = visitDetailsUrl(s);
     html += `<li class="stop-row" data-i="${i}"><button type="button" class="done-btn" aria-label="Mark done">○</button><span class="num">${i + 1}</span>` +
       `<span class="nm">${eta}${e(s.name || s.address || 'Stop')}</span>` +
-      (detailsUrl ? `<a class="go visit" href="${e(detailsUrl)}" target="_blank" rel="noopener">Visit</a>` : '') +
-      (i < orderedStops.length - 1 || (end && !end.isStop) ? `<button type="button" class="go end-btn" data-end="${i}" title="Finish the route at this stop">End here</button>` : '') +
-      `<a class="go" href="${e(nb.primary.url)}" target="_blank" rel="noopener">Go</a>` +
-      `<a class="go alt" href="${e(nb.other.url)}" target="_blank" rel="noopener" title="Open in ${nb.other.label}">${nb.other.app === 'apple' ? 'Apple' : 'Google'}</a></li>`;
+      (detailsUrl ? `<a class="go visit" href="${e(detailsUrl)}" target="_blank" rel="noopener">Log</a>` : '') +
+      `<a class="go" href="${e(nb.primary.url)}" target="_blank" rel="noopener">Go</a></li>`;
     t += AVG_VISIT_MINS * 60 * 1000; // time spent at this stop
   });
   if (endStop) {
@@ -717,6 +640,8 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
   }
   html += `</ol>`;
   if (end && end.isStop) html += `<button type="button" class="nav-btn reset-end">Reset: return to start</button>`;
+  else if (orderedStops.length > 1) html += `<button type="button" class="nav-btn set-end">Set a different end point…</button>`;
+  html += `<div id="end-picker" hidden></div>`;
 
   // Remaining navigation options: later segments of the preferred app, then every segment of the other app
   if (prim.length > 1) prim.forEach((seg, idx) => { html += segBtn(seg, pref, segLabel(pref, idx)); });
@@ -726,7 +651,6 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
   body.querySelectorAll('.stop-row:not(.end-row)').forEach((row) => {
     row.addEventListener('click', (ev) => {
       const s = orderedStops[+row.dataset.i];
-      if (ev.target.closest('.end-btn')) { rerouteWithEnd(+ev.target.closest('.end-btn').dataset.end); return; }
       if (ev.target.closest('a.visit')) { markStopDone(s); return; }
       if (ev.target.closest('a')) return;
       if (ev.target.closest('.done-btn')) {
@@ -739,6 +663,14 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
     });
   });
 
+  const setEnd = body.querySelector('.set-end');
+  if (setEnd) setEnd.addEventListener('click', () => {
+    const pk = document.getElementById('end-picker');
+    pk.innerHTML = '<div class="meta">Finish the route at:</div>' + orderedStops.map((s, i) =>
+      `<button type="button" class="pick-end" data-i="${i}">${i + 1}. ${e(s.name || s.address || 'Stop')}</button>`).join('');
+    pk.hidden = false;
+    pk.querySelectorAll('.pick-end').forEach((b) => b.addEventListener('click', () => rerouteWithEnd(+b.dataset.i)));
+  });
   const rst = body.querySelector('.reset-end');
   if (rst) rst.addEventListener('click', () => rerouteWithEnd(null));
 

@@ -196,7 +196,6 @@ body.sheet-expanded #fab-group { display: none; }
 .sync-box { margin-top: 8px; }
 .sync-box label { display: block; margin-top: 6px; font-size: 14px; }
 .sync-box input { display: block; width: 100%; height: 44px; margin-top: 4px; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
-.stop-row a.go.alt { font-weight: normal; font-size: 12px; padding: 12px 4px; color: #777; }
 
 /* Settings controls styled as buttons */
 summary.settings-btn {
@@ -211,5 +210,6 @@ summary.settings-btn:active { background: #dbe7fb; }
 summary.settings-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .stop-row .num.end { background: #0b8043; }
 .stop-row.end-row { cursor: default; }
-.stop-row button.go.end-btn { flex: none; background: none; border: 1px solid #c6d6f5; border-radius: 6px; color: var(--blue); font-size: 12px; padding: 6px 6px; margin-right: 2px; cursor: pointer; }
 button.nav-btn.reset-end { background: #5f6368; }
+button.nav-btn.set-end { background: #eef3fd; color: var(--blue); border: 1px solid #c6d6f5; }
+#end-picker button.pick-end { display: block; width: 100%; min-height: 44px; margin-top: 6px; text-align: left; padding: 0 12px; background: #fff; border: 1px solid #c6d6f5; border-radius: 8px; font-size: 15px; color: #222; cursor: pointer; }

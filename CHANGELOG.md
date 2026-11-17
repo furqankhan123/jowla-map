@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.14.0]
+- Rows decluttered (Log + Go only); one "Set a different end point…" button with a stop picker below the list.
+- Segment builders moved to `segments.js` with tests (`node tests/segments.test.js`): no repeated stops, later segments omit the origin so Google/Apple use your location.
+
 ## [0.13.0]
 - Marker popup: only Navigate (preferred app) and Visit Details.
 - Route end always defaults to the start; per-row "End here" re-optimizes so the route finishes at that stop, with a reset button. Old saved routes default to a round trip.
