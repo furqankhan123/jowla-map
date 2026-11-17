@@ -17,10 +17,6 @@ const MAX_APPLE_STOPS = 15;
 
 let currentPolyline = null;
 
-function isIOS() {
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
 function addOptimizeControl(map) {
   const controlDiv = document.createElement('div');
   const controlUI = document.createElement('div');
@@ -333,12 +329,10 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start) {
   });
   html += `</ol>`;
 
-  // Apple Maps (iPhone only, when within limit)
-  if (isIOS()) {
-    const appleUrl = buildAppleMapsUrl(orderedStops, start, modeText);
-    if (appleUrl) {
-      html += `<a class="nav-btn" href="${appleUrl}" target="_blank" style="background:#007aff;">Open full route in Apple Maps</a>`;
-    }
+  // Apple Maps (all users, when within limit)
+  const appleUrl = buildAppleMapsUrl(orderedStops, start, modeText);
+  if (appleUrl) {
+    html += `<a class="nav-btn" href="${appleUrl}" target="_blank" style="background:#007aff;">Open full route in Apple Maps</a>`;
   }
 
   // Google Maps segments
