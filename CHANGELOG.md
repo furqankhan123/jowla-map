@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.1]
+- Route sheet keeps its size and scroll when switching apps and back (no forced collapse); extra bottom padding clears the browser toolbar.
+- Google segment links: raw `lat,lng` waypoints joined by `|` and explicit origin on later segments (attempt at the infinite "Loading...").
+
 ## [0.15.0]
 - Segment links as compact numbered buttons, one row per app.
 - Different end point by address (Places Autocomplete/Geocoder) or current location; stop picker removed.

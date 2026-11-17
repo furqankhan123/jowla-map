@@ -30,8 +30,11 @@
     return chunk(points, MAX_GM_WAYPOINTS + 1).map(function (c, idx) {
       var dest = c.pts[c.pts.length - 1], way = c.pts.slice(0, -1);
       var url = 'https://www.google.com/maps/dir/?api=1&destination=' + ll(dest) + '&travelmode=' + mode;
-      if (idx === 0 && start) url += '&origin=' + ll(start);
-      if (way.length) url += '&waypoints=' + way.map(function (p) { return encodeURIComponent(ll(p)); }).join('%7C');
+      // Later segments start where the previous one ended; an explicit origin avoids the app waiting on "Your location".
+      var origin = idx === 0 ? start : points[c.from - 1];
+      if (origin) url += '&origin=' + ll(origin);
+      // Raw lat,lng joined by '|' (encoding the comma made the Google Maps app hang on "Loading...").
+      if (way.length) url += '&waypoints=' + way.map(ll).join('|');
       return { url: url, label: label(c, points.length), stopCount: c.pts.length };
     });
   }

@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.15.0';
+const APP_VERSION = '0.15.1';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -236,7 +236,7 @@ async function runOptimization(map, start, bounds, source) {
     savedAt: Date.now()
   };
   try { localStorage.setItem(ROUTE_KEY, JSON.stringify(route)); } catch (e) {}
-  renderRoute(map, route);
+  renderRoute(map, route, true);
 }
 
 async function requestRoute(start, candidates, endPoint) {
@@ -297,6 +297,7 @@ async function requestRoute(start, candidates, endPoint) {
 }
 
 let currentRoute = null;
+let freshRoute = false; // true only right after a new Optimize: open at peek
 /** Re-optimize the current stops so the route ends at `endPoint` {lat,lng,name} (null = back to start). */
 async function rerouteWithEnd(endPoint) {
   if (optimizing || !currentRoute) return;
@@ -354,9 +355,6 @@ window.markRouteStopDone = function (loc) {
   const s = currentRoute.stops.find((x) => sameStop(x, loc));
   if (s) markStopDone(s);
 };
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && currentRoute && document.getElementById('route-panel')) setSheet('peek');
-});
 /** Refresh done-state visuals: rows, markers and the primary nav button. */
 function updateDoneUi() {
   if (!currentRoute) return;
@@ -381,7 +379,8 @@ function updateDoneUi() {
   if (window.renderQuickLog) renderQuickLog(el, next);
 }
 
-function renderRoute(map, route) {
+function renderRoute(map, route, fresh) {
+  freshRoute = !!fresh;
   currentRoute = route;
   showRoutePanel(route.stops, route.totalMins, route.travelMode, route.start, route.legSecs, route.end);
   drawPolyline(map, route.encoded);
@@ -432,12 +431,17 @@ function drawPolyline(map, encoded) {
 
 const SHEET_STATES = ['peek', 'half', 'full'];
 
+const SHEET_KEY = 'jowla-sheet-state';
+function savedSheet() {
+  try { const v = localStorage.getItem(SHEET_KEY); return SHEET_STATES.indexOf(v) >= 0 ? v : 'peek'; } catch (e) { return 'peek'; }
+}
 function setSheet(state) {
   const panel = document.getElementById('route-panel');
   if (!panel) return;
   panel.classList.remove('peek', 'half', 'full');
   panel.classList.add(state);
   panel.style.height = '';
+  try { localStorage.setItem(SHEET_KEY, state); } catch (e) {}
   document.body.classList.toggle('sheet-expanded', state !== 'peek');
   syncSheetPeek();
 }
@@ -622,6 +626,8 @@ function fmtTime(d) {
 
 function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end) {
   const panel = ensurePanel();
+  const scroller = document.getElementById('route-panel-body');
+  const keepScroll = scroller ? scroller.scrollTop : 0;
   const modeText = travelMode === 'WALK' ? 'walking' : 'driving';
   const body = document.getElementById('route-results');
   const e = escapeHtml;
@@ -707,7 +713,9 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
   panel.classList.remove('minimized');
   panel.classList.add('visible');
   document.body.classList.remove('no-sheet');
-  setSheet('peek');
+  setSheet(freshRoute ? 'peek' : savedSheet());
+  freshRoute = false;
+  if (scroller) scroller.scrollTop = keepScroll;
   document.getElementById('route-minimize-btn').textContent = '–';
   updateDoneUi();
 }

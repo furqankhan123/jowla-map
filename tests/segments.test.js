@@ -21,8 +21,10 @@ for (const n of [1, 2, 10, 11, 15, 16, 30, 31, 46]) {
     assert.strictEqual(new Set(all).size, n, `${name} ${n}: no repeats`);
     assert.strictEqual(all[all.length - 1], `${10 + n - 1},${20 + n - 1}`, `${name} ${n}: ends at last point`);
     segs.forEach((s) => assert(points(s.url, app).length <= cap, `${name} ${n}: cap`));
-    segs.slice(1).forEach((s) => assert(!/origin=|source=/.test(s.url), `${name}: later segments omit origin`));
+    if (app === 'a') segs.slice(1).forEach((s) => assert(!/source=/.test(s.url), 'apple: later segments omit source'));
+    else segs.slice(1).forEach((s, i) => assert(new URL(s.url).searchParams.get('origin') === points(segs[i].url, 'g').pop(), 'google: origin = previous destination'));
     assert(/origin=|source=/.test(segs[0].url));
+    segs.forEach((s) => assert(!/%2C|%7C/i.test(s.url), `${name}: no encoded separators`));
   }
 }
 // end point equal to the previous point is not repeated
