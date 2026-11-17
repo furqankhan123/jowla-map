@@ -179,13 +179,13 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 **Verified facts (don't re-derive):**
 - Google segment URLs: explicit `origin` (previous destination) + raw `lat,lng` waypoints joined by `|` works; encoded commas made the Google Maps app load forever.
-- Apple Maps: a fixed `source=` makes Apple show only **Steps**; omitting it (start = Current Location) is expected to show **Go** (0.17.0, needs confirmation on the phone). Apple's practical cap is 15 points per link.
+- Apple Maps: a fixed `source=` makes Apple show only **Steps**; omitting it (start = Current Location) shows **Go** (0.17.0, CONFIRMED on iPhone). Apple's practical cap is 15 points per link.
 - Places legacy API is unavailable for new projects; the key must allow Places API (New) and Geocoding API.
 - The Google "camera control" (4-arrows button, bottom right) was removed with `cameraControl:false`.
 - Sheet: visit codes `No Response`, `Left Message`, `Gave Targheeb` (plus `Do Not Visit`, `[auto] comment update`; address strings also appear in the visitcode column = noise). Date format `October 25, 2026`. `rowid` (column V) is the row number; ~45,400 rows load. The Sheets key is referrer-restricted (curl returns 403, correct).
 
 **Open items (pick up here):**
-1. **Confirm Apple Go** after 0.17.0 on the phone (segment buttons and the Apple "12 stops vs 15" count mismatch seen earlier).
+1. ~~Confirm Apple Go~~ confirmed working. Remaining curiosity only: the Apple "12 stops vs 15" count seen in an earlier screenshot (likely moot now).
 2. **Owner setup for quick-log (step 5):** deploy `apps-script/Code.gs` on a copy of the sheet first, then fill `syncUrl`/`syncToken` in `config.js`. Until then quick-log chips are hidden. Keep `ALLOWED_CODES` (Code.gs) = `QUICK_CODES` (writeback.js); rotate the token if leaked.
 3. **Quick-log Undo** only un-marks locally; the sheet write stays. Drop Undo for quick-log or queue a restoring write.
 4. **Performance at ~45k rows:** `applyFilters` recreates every marker (marker clustering / viewport rendering); debounce the filter name input.
