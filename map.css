@@ -213,3 +213,25 @@ summary.settings-btn:focus-visible { outline: 3px solid var(--blue); outline-off
 button.nav-btn.reset-end { background: #5f6368; }
 button.nav-btn.set-end { background: #eef3fd; color: var(--blue); border: 1px solid #c6d6f5; }
 #end-picker button.pick-end { display: block; width: 100%; min-height: 44px; margin-top: 6px; text-align: left; padding: 0 12px; background: #fff; border: 1px solid #c6d6f5; border-radius: 8px; font-size: 15px; color: #222; cursor: pointer; }
+
+#optimize-fab { background: var(--blue); color: #fff; display: flex; align-items: center; justify-content: center; padding: 0; }
+#optimize-fab.busy::before { margin: 0; border-color: #fff; border-top-color: transparent; }
+#optimize-fab.busy svg { display: none; }
+.seg-grid { margin-top: 10px; }
+.seg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.seg-row .seg-app { flex: 1 0 100%; font-size: 13px; color: #555; font-weight: bold; }
+a.seg-btn { flex: none; min-width: 48px; min-height: 44px; padding: 0 14px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: var(--green); color: #fff; border-radius: 8px; font-weight: bold; text-decoration: none; }
+a.seg-btn.apple { background: #007aff; }
+#end-picker input { width: 100%; box-sizing: border-box; min-height: 48px; font-size: 16px; padding: 0 12px; border: 1px solid #c6d6f5; border-radius: 8px; }
+#end-picker .end-btns { display: flex; gap: 8px; }
+.pac-container { z-index: 10000; }
+#tour-overlay { position: fixed; inset: 0; z-index: 20000; background: transparent; }
+#tour-ring { position: fixed; z-index: 20001; display: none; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,.6); pointer-events: none; }
+#tour-card { position: fixed; z-index: 20002; left: 16px; right: 16px; max-width: 360px; margin: 0 auto; background: #fff; color: #222; border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+#tour-card .tour-title { font-weight: bold; font-size: 17px; margin-bottom: 6px; }
+#tour-card .tour-text { font-size: 15px; line-height: 1.4; }
+#tour-card .tour-btns { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+#tour-card button { min-height: 44px; min-width: 72px; border-radius: 8px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; }
+#tour-card .tour-next { background: var(--blue); color: #fff; }
+#tour-card .tour-skip { background: #eef3fd; color: var(--blue); }
+#tour-card .tour-count { color: #777; font-size: 13px; }

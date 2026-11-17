@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.15.0]
+- Segment links as compact numbered buttons, one row per app.
+- Different end point by address (Places Autocomplete/Geocoder) or current location; stop picker removed.
+- Optimize button is now an icon.
+- First-run walkthrough tour (`tour.js`) with Replay in settings.
+
 ## [0.14.0]
 - Rows decluttered (Log + Go only); one "Set a different end point…" button with a stop picker below the list.
 - Segment builders moved to `segments.js` with tests (`node tests/segments.test.js`): no repeated stops, later segments omit the origin so Google/Apple use your location.

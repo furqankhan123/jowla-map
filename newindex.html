@@ -9,7 +9,7 @@
     <title>Jowla Map</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-    <link rel="stylesheet" href="map.css?v=0.14.0">
+    <link rel="stylesheet" href="map.css?v=0.15.0">
 </head>
 
 <body id="black">
@@ -20,20 +20,21 @@
     <button id="locate-fab" class="fab" type="button" aria-label="Go to my location" title="My location">&#9678;</button>
     <button id="cluster-fab" class="fab" type="button" aria-label="Suggest clusters" title="Suggest clusters">&#10022;</button>
     <button id="filter-fab" class="fab" type="button" aria-label="Filters" title="Filters">&#9776;</button>
-    <button id="optimize-fab" class="fab-pill" type="button" title="Optimize the stops currently shown on the map">Optimize</button>
+    <button id="optimize-fab" class="fab" type="button" aria-label="Optimize nearby" title="Optimize nearby stops"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 0 0 0-8H10a4 4 0 0 1 0-8h6"/></svg></button>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/jquery-3.1.1.min.js"></script>
-<script src="config.js?v=0.14.0"></script>
-<script src="nav.js?v=0.14.0"></script>
-<script src="map.js?v=0.14.0"></script>
-<script src="segments.js?v=0.14.0"></script>
-<script src="optimize-route.js?v=0.14.0"></script>
-<script src="cluster.js?v=0.14.0"></script>
-<script src="writeback.js?v=0.14.0"></script>
+<script src="config.js?v=0.15.0"></script>
+<script src="nav.js?v=0.15.0"></script>
+<script src="map.js?v=0.15.0"></script>
+<script src="segments.js?v=0.15.0"></script>
+<script src="optimize-route.js?v=0.15.0"></script>
+<script src="cluster.js?v=0.15.0"></script>
+<script src="tour.js?v=0.15.0"></script>
+<script src="writeback.js?v=0.15.0"></script>
 <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ&libraries=geometry&callback=initialiseMap">
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ&libraries=geometry,places&callback=initialiseMap">
 </script>
 
 <script>
