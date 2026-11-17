@@ -6,7 +6,7 @@
     { sel: '#cluster-fab', title: 'Suggest clusters', text: 'Finds dense groups of unvisited stops near you. Tap one to optimize it.' },
     { sel: '#optimize-fab', title: 'Optimize', text: 'Builds a short route of nearby unvisited stops (about an hour) starting from where you are.' },
     { sel: '#route-panel.visible', title: 'Your route', text: 'Tap Go to navigate to a stop and Log to record the visit. The circle marks a stop done. The route ends back at your start unless you set a different end point at the bottom.', optional: true },
-    { sel: null, title: 'Maps app', text: 'Pick Google or Apple Maps under Route settings. Apple Maps may open on an overview: tap its Go button to start.' }
+    { sel: null, title: 'Maps app', text: 'Pick Google or Apple Maps under Route settings. Apple Maps shows multi-stop routes as an overview: tap Steps, or use the Go buttons on each stop to navigate one stop at a time.' }
   ];
   var idx = 0, overlay, ring, card;
 

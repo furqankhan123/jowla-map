@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.16.0]
+- Google segment fix confirmed.
+- Apple multi-stop buttons labelled as an overview (Apple offers only Steps for multi-stop routes); Go pill and row Go use single-stop links that start navigation; tour text updated.
+
 ## [0.15.1]
 - Route sheet keeps its size and scroll when switching apps and back (no forced collapse); extra bottom padding clears the browser toolbar.
 - Google segment links: raw `lat,lng` waypoints joined by `|` and explicit origin on later segments (attempt at the infinite "Loading...").
