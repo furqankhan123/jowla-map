@@ -99,7 +99,7 @@ function renderQuickLog(container, stop) {
 }
 
 function syncSettingsHtml() {
-  return `<details class="sync-box"><summary>Sheet sync</summary>
+  return `<details class="sync-box"><summary class="settings-btn"><span class="ic">⟳</span>Sheet sync<span class="chev">▾</span></summary>
     <label>Sync URL <input id="sync-url" type="url" placeholder="https://script.google.com/…/exec" value="${escapeHtml(lsGet(SYNC_URL_KEY))}"></label>
     <label>Sync token <input id="sync-token" type="password" autocomplete="off" value="${escapeHtml(lsGet(SYNC_TOKEN_KEY))}"></label>
     <div class="start-row" id="sync-status"></div>

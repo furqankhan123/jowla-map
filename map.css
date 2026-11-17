@@ -99,7 +99,6 @@ a.nav-btn, button.nav-btn {
 a.nav-btn.apple { background: #007aff; }
 button.nav-btn.primary { background: var(--blue); }
 details.route-settings-box { margin-top: 12px; }
-details.route-settings-box summary { min-height: 44px; display: flex; align-items: center; font-weight: bold; cursor: pointer; }
 #route-settings label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; min-height: 44px; }
 #route-settings select { font-size: 16px; height: 44px; padding: 0 8px; }
 #route-settings label.chk { justify-content: flex-start; gap: 8px; }
@@ -195,7 +194,18 @@ body.sheet-expanded #fab-group { display: none; }
 .quick-chip { flex: 1; min-height: 44px; border: 1px solid var(--blue); background: #fff; color: var(--blue); border-radius: 22px; font-size: 14px; font-weight: bold; cursor: pointer; }
 .quick-chip:active { background: #eef3fd; }
 .sync-box { margin-top: 8px; }
-.sync-box summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
 .sync-box label { display: block; margin-top: 6px; font-size: 14px; }
 .sync-box input { display: block; width: 100%; height: 44px; margin-top: 4px; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
 .stop-row a.go.alt { font-weight: normal; font-size: 12px; padding: 12px 4px; color: #777; }
+
+/* Settings controls styled as buttons */
+summary.settings-btn {
+    list-style: none; display: flex; align-items: center; gap: 8px; box-sizing: border-box;
+    min-height: 44px; padding: 0 12px; margin-top: 8px; border: 1px solid #c6d6f5; border-radius: 8px;
+    background: #eef3fd; color: var(--blue); font-weight: bold; cursor: pointer;
+}
+summary.settings-btn::-webkit-details-marker { display: none; }
+summary.settings-btn .chev { margin-left: auto; transition: transform .2s; }
+details[open] > summary.settings-btn .chev { transform: rotate(180deg); }
+summary.settings-btn:active { background: #dbe7fb; }
+summary.settings-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }

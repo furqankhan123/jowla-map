@@ -517,7 +517,7 @@ function ensurePanel() {
     <div id="route-primary"></div>
     <div id="route-panel-body">
       <div id="route-results"></div>
-      <details class="route-settings-box"><summary>Route settings</summary><div id="route-settings"></div></details>
+      <details class="route-settings-box"><summary class="settings-btn"><span class="ic">⚙</span>Route settings<span class="chev">▾</span></summary><div id="route-settings"></div></details>
     </div>
   `;
   document.body.appendChild(panel);

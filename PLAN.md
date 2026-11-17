@@ -154,7 +154,7 @@ Not built until routing supports mixed modes (currently one `travelMode` per rou
   5. Route sheet: show both Google and Apple buttons for everyone. When more than 15 stops, split Apple into 15-stop segments like `buildGoogleMapsSegments` ("Apple Maps – Segment N") instead of dropping it.
 - **Files:** map.js, optimize-route.js, map.css (secondary button style), settings markup in newindex.html.
 - **Verify:** on iPhone, Android and desktop the popup, Next pill, row Go and sheet all show both apps; the preference flips which is primary; 16+ stops yields multiple Apple segments; no reference to `isIOS` remains.
-### D. Settings controls should look like buttons  [OPEN]
+### D. Settings controls should look like buttons  [DONE 0.11.1]
 - **Problem:** "Route settings" and "Sync sheet" in the route sheet are bare `<summary>` / text links (`optimize-route.js` ~line 517, sync settings bound by `bindSyncSettings`), so users don't realize they can be tapped.
 - **Fix:** style both as real buttons: `.settings-btn` with the `.iw-btn.alt` look (light-blue fill, blue bold text, 1px border, 8px radius, min-height 44px, full-width or side by side), a leading icon (gear / refresh) and a trailing chevron that rotates when open. Keep `<details>`/`<summary>` for accessibility but apply the button styles to `summary` and remove the default disclosure marker; add `:active` and `:focus-visible` states.
 - **Files:** map.css, optimize-route.js (markup/classes), sync settings markup.
