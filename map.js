@@ -16,6 +16,14 @@ function escapeHtml(s) {
 }
 window.escapeHtml = escapeHtml;
 
+function visitDetailsUrl(loc) {
+  if (!loc || loc.db == null || loc.rowid == null) return '';
+  return 'https://dailyfikr.github.io/VisitDetails.html?DB=' + encodeURIComponent(loc.db) +
+    '&ID=' + encodeURIComponent(loc.rowid) + '&Name=' + encodeURIComponent(loc.name) +
+    '&Sts=' + encodeURIComponent(loc.sts);
+}
+window.visitDetailsUrl = visitDetailsUrl;
+
 var userDot = null;
 function locateUser() {
   if (!navigator.geolocation) {
@@ -186,16 +194,14 @@ function createMarker(map, location, infowindow) {
     var e = escapeHtml;
     var dest = location.latitude + ',' + location.longtitude;
     var navUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(dest);
-    var detailsUrl = 'https://dailyfikr.github.io/VisitDetails.html?DB=' + encodeURIComponent(location.db) +
-      '&ID=' + encodeURIComponent(location.rowid) + '&Name=' + encodeURIComponent(location.name) +
-      '&Sts=' + encodeURIComponent(location.sts);
+    var detailsUrl = visitDetailsUrl(location);
     infowindow.setContent('<div class="iw">' +
       (location.name ? '<div class="iw-name">' + e(location.name) + '</div>' : '') +
       (location.address ? '<p>' + e(location.address) + '</p>' : '') +
       (location.comments ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +
       (location.visitdate ? '<p><strong>Last visit:</strong> ' + e(location.visitdate) + '</p>' : '') +
       '<a class="iw-btn" href="' + e(navUrl) + '" target="_blank" rel="noopener">Navigate</a>' +
-      '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener">Visit Details</a>' +
+      '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__pendingStart);}">Visit Details</a>' +
       '<button type="button" class="iw-btn alt" onclick="if(window.setRouteStart){setRouteStart(window.__pendingStart);}return false;">Set as start</button>' +
       '</div>');
     infowindow.open(map, marker);

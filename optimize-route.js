@@ -83,14 +83,25 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
+const APP_VERSION = '0.6.0';
+
 let toastTimer = null;
 function showToast(msg, o) {
   const el = document.getElementById('toast');
   if (!el) return;
   el.textContent = msg;
-  el.className = 'show' + (o && o.type === 'error' ? ' error' : '');
+  const act = o && o.action;
+  if (act) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'toast-action';
+    b.textContent = act.label;
+    b.addEventListener('click', () => { el.className = ''; act.onClick(); });
+    el.appendChild(b);
+  }
+  el.className = 'show' + (o && o.type === 'error' ? ' error' : '') + (act ? ' has-action' : '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, 4000);
+  toastTimer = setTimeout(() => { el.className = ''; }, act ? 7000 : 4000);
 }
 window.showToast = showToast;
 
@@ -295,6 +306,33 @@ function nextStopUrl(s) {
     ? `https://maps.apple.com/?daddr=${s.latitude},${s.longtitude}`
     : `https://www.google.com/maps/dir/?api=1&destination=${s.latitude},${s.longtitude}`;
 }
+function sameStop(a, b) {
+  if (a.rowid != null && b.rowid != null) return String(a.rowid) === String(b.rowid) && String(a.db) === String(b.db);
+  return a.latitude === b.latitude && a.longtitude === b.longtitude;
+}
+function stopLabel(i) {
+  const s = currentRoute.stops[i];
+  return `${i + 1}. ${s.name || s.address || 'Stop'}`;
+}
+/** Mark a stop done (from any Visit link) and toast with Undo. */
+function markStopDone(s) {
+  if (!currentRoute || !s || s.done) return;
+  s.done = true;
+  persistRoute();
+  updateDoneUi();
+  const stops = currentRoute.stops;
+  const next = stops.find((x) => !x.done);
+  const msg = `Stop ${stops.indexOf(s) + 1} logged · ` + (next ? `Next: ${stopLabel(stops.indexOf(next))}` : 'All done 🎉');
+  showToast(msg, { action: { label: 'Undo', onClick: () => { s.done = false; persistRoute(); updateDoneUi(); } } });
+}
+window.markRouteStopDone = function (loc) {
+  if (!currentRoute || !loc) return;
+  const s = currentRoute.stops.find((x) => sameStop(x, loc));
+  if (s) markStopDone(s);
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && currentRoute && document.getElementById('route-panel')) setSheet('peek');
+});
 /** Refresh done-state visuals: rows, markers and the primary nav button. */
 function updateDoneUi() {
   if (!currentRoute) return;
@@ -311,7 +349,11 @@ function updateDoneUi() {
   if (!el) return;
   if (!next) { el.innerHTML = '<div class="meta">All stops done 🎉</div>'; return; }
   const n = stops.indexOf(next) + 1;
-  el.innerHTML = `<a class="nav-btn${isIOS ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Next: ${n}. ${escapeHtml(next.name || next.address || 'Stop')}</a>`;
+  const vUrl = window.visitDetailsUrl ? visitDetailsUrl(next) : '';
+  el.innerHTML = `<a class="nav-btn${isIOS ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Go: ${n}. ${escapeHtml(next.name || next.address || 'Stop')}</a>` +
+    (vUrl ? `<a class="nav-btn log" id="log-visit" href="${escapeHtml(vUrl)}" target="_blank" rel="noopener">Log visit ✓</a>` : '');
+  const log = document.getElementById('log-visit');
+  if (log) log.addEventListener('click', () => markStopDone(next));
 }
 
 function renderRoute(map, route) {
@@ -541,6 +583,7 @@ function refreshSettingsUi() {
         ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
         : 'GPS (or tap a pin → “Set as start”)'}</div>
       <button id="opt-rerun" type="button" class="nav-btn primary">Optimize</button>
+      <div class="version">v${APP_VERSION}</div>
     </div>`;
 
   document.getElementById('opt-target').addEventListener('change', (e) => { opts.targetMins = parseInt(e.target.value, 10); saveOpts(); });
@@ -587,12 +630,10 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
     const goUrl = isIOS
       ? `https://maps.apple.com/?daddr=${s.latitude},${s.longtitude}`
       : `https://www.google.com/maps/dir/?api=1&destination=${s.latitude},${s.longtitude}`;
-    const detailsUrl = s.db != null && s.rowid != null
-      ? `https://dailyfikr.github.io/VisitDetails.html?DB=${encodeURIComponent(s.db)}&ID=${encodeURIComponent(s.rowid)}&Name=${encodeURIComponent(s.name)}&Sts=${encodeURIComponent(s.sts)}`
-      : '';
+    const detailsUrl = visitDetailsUrl(s);
     html += `<li class="stop-row" data-i="${i}"><button type="button" class="done-btn" aria-label="Mark done">○</button><span class="num">${i + 1}</span>` +
       `<span class="nm">${eta}${e(s.name || s.address || 'Stop')}</span>` +
-      (detailsUrl ? `<a class="go" href="${e(detailsUrl)}" target="_blank" rel="noopener">Visit</a>` : '') +
+      (detailsUrl ? `<a class="go visit" href="${e(detailsUrl)}" target="_blank" rel="noopener">Visit</a>` : '') +
       `<a class="go" href="${e(goUrl)}" target="_blank" rel="noopener">Go</a></li>`;
     t += AVG_VISIT_MINS * 60 * 1000; // time spent at this stop
   });
@@ -609,8 +650,9 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
   body.innerHTML = html;
   body.querySelectorAll('.stop-row').forEach((row) => {
     row.addEventListener('click', (ev) => {
-      if (ev.target.closest('a')) return;
       const s = orderedStops[+row.dataset.i];
+      if (ev.target.closest('a.visit')) { markStopDone(s); return; }
+      if (ev.target.closest('a')) return;
       if (ev.target.closest('.done-btn')) {
         s.done = !s.done;
         persistRoute();
