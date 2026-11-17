@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.0]
+### Added
+- PWA: web manifest, icons, and a service worker (app shell cached; Sheets data network-first with cached fallback). Installable to the home screen.
+- jQuery is self-hosted so the shell loads offline. The Maps JS API still needs a connection.
+
 ## [0.7.0]
 ### Added
 - In-map filter sheet (City/Status/Visited/Name) with live count; updates the URL and remembered filters, clears the current route.

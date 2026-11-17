@@ -77,6 +77,7 @@ function initialiseMap() {
       locations.push(location);
     });
     console.log('locations size (after DNV filter) ' + locations.length);
+    if (!navigator.onLine && window.showToast) showToast('Offline — showing saved data');
 
     var mapOptions = {
       zoom: 16, center: frisco,

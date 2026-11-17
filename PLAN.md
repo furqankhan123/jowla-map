@@ -76,7 +76,7 @@ Still open: walk/drive path coloring, cluster suggestions, in-map filters, PWA, 
 | 1 | Mobile-first pass | Done (6bac1ee) | - | no | L |
 | 2 | Done / Next stop | Done (6bac1ee) | 1 | no | M |
 | 3 | In-map filter sheet | Done | 1 | no | M |
-| 4 | PWA install + offline shell | Next | 1 (independent of 3) | no | M |
+| 4 | PWA install + offline shell | Done (offline route list without map deferred) | 1 (independent of 3) | no | M |
 | 5 | Sheet write-back "Mark visited" | After 3-4 | 2 | Apps Script | M |
 | 6 | Cluster suggestions | After 3 | 1 | no | M |
 | 7 | Walk/drive path coloring | Deferred | mixed-mode routing | no | S |
