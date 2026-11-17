@@ -165,7 +165,8 @@ function clearMarkers() {
 
 function setLocations(map, locs) {
   var bounds = new google.maps.LatLngBounds();
-  var infowindow = new google.maps.InfoWindow({ content: "Content String", maxWidth: Math.min(320, window.innerWidth - 48) });
+  var infowindow = new google.maps.InfoWindow({ content: "Content String", maxWidth: Math.min(320, window.innerWidth - 48), headerDisabled: true });
+  window.__iw = infowindow;
   var count = 0;
   for (var i = 0; i < locs.length; i++) {
     if (!locs[i].latitude || !locs[i].longtitude) continue;
@@ -196,6 +197,7 @@ function createMarker(map, location, infowindow) {
     var navUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(dest);
     var detailsUrl = visitDetailsUrl(location);
     infowindow.setContent('<div class="iw">' +
+      '<button type="button" class="iw-close" aria-label="Close" onclick="window.__iw && window.__iw.close()">&times;</button>' +
       (location.name ? '<div class="iw-name">' + e(location.name) + '</div>' : '') +
       (location.address ? '<p>' + e(location.address) + '</p>' : '') +
       (location.comments ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +

@@ -51,7 +51,7 @@ body.no-sheet #fab-group { bottom: calc(24px + env(safe-area-inset-bottom)); }
 /* Route panel: bottom sheet (mobile first) */
 #route-panel {
     position: fixed; left: 0; right: 0; bottom: 0;
-    height: var(--sheet-peek);
+    height: auto;
     background: #fff; border-radius: 16px 16px 0 0;
     box-shadow: 0 -2px 12px rgba(0,0,0,.3);
     z-index: 1000; display: none; flex-direction: column; overflow: hidden;
@@ -147,3 +147,16 @@ a.nav-btn.log { flex: 0 0 38%; background: var(--blue); }
     color: #8ab4f8; font-size: 15px; font-weight: bold; cursor: pointer;
 }
 .settings .version { margin-top: 8px; color: #888; font-size: 12px; text-align: center; }
+
+/* Sheet-expanded: FABs would sit under the tall sheet, so hide them */
+body.sheet-expanded #fab-group { display: none; }
+
+/* Info window: header disabled, own close button */
+.gm-style-iw-ch { padding-top: 0 !important; min-height: 0 !important; }
+.gm-style .gm-style-iw-d { padding-top: 0; }
+.iw { position: relative; padding-top: 4px; }
+.iw .iw-close {
+    position: absolute; top: -8px; right: -12px; width: 44px; height: 44px;
+    background: none; border: none; font-size: 26px; line-height: 1; color: #666; cursor: pointer;
+}
+.iw .iw-name { padding-right: 36px; }

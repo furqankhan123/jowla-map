@@ -479,6 +479,15 @@ function setSheet(state) {
   panel.classList.remove('peek', 'half', 'full');
   panel.classList.add(state);
   panel.style.height = '';
+  document.body.classList.toggle('sheet-expanded', state !== 'peek');
+  syncSheetPeek();
+}
+/** Keep FABs exactly above the peek sheet, whatever height its content needs. */
+function syncSheetPeek() {
+  const panel = document.getElementById('route-panel');
+  if (!panel || !panel.classList.contains('visible') || !panel.classList.contains('peek')) return;
+  if (window.matchMedia('(min-width: 640px)').matches) return;
+  document.documentElement.style.setProperty('--sheet-peek', panel.offsetHeight + 'px');
 }
 function currentSheet() {
   const panel = document.getElementById('route-panel');
@@ -507,6 +516,7 @@ function ensurePanel() {
     </div>
   `;
   document.body.appendChild(panel);
+  if (window.ResizeObserver) new ResizeObserver(syncSheetPeek).observe(panel);
 
   const minBtn = document.getElementById('route-minimize-btn');
   const isDesktop = () => window.matchMedia('(min-width: 640px)').matches;
