@@ -32,11 +32,6 @@ let routeMarkers = [];
 let startMarker = null;
 let mapRef = null;
 
-function escapeHtml(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
 /** Called from the marker info window "Set as start" link. */
 function setRouteStart(loc) {
   if (!loc || !mapRef) return;
@@ -88,44 +83,45 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
+let toastTimer = null;
+function showToast(msg, o) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'show' + (o && o.type === 'error' ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 4000);
+}
+window.showToast = showToast;
+
+let optimizing = false;
+function setBusy(b) {
+  optimizing = b;
+  [document.getElementById('optimize-fab'), document.getElementById('opt-rerun')].forEach((btn) => {
+    if (!btn) return;
+    btn.disabled = b;
+    btn.classList.toggle('busy', b);
+    btn.textContent = b ? 'Optimizing…' : 'Optimize';
+  });
+}
+
 function addOptimizeControl(map) {
-  const controlDiv = document.createElement('div');
-  const controlUI = document.createElement('div');
-  controlUI.style.backgroundColor = '#fff';
-  controlUI.style.border = '2px solid #fff';
-  controlUI.style.borderRadius = '3px';
-  controlUI.style.boxShadow = '0 2px 6px rgba(0,0,0,.3)';
-  controlUI.style.cursor = 'pointer';
-  controlUI.style.marginBottom = '22px';
-  controlUI.style.textAlign = 'center';
-  controlUI.title = 'Optimize the stops currently shown on the map';
-  controlDiv.appendChild(controlUI);
-
-  const controlText = document.createElement('div');
-  controlText.style.color = 'rgb(25,25,25)';
-  controlText.style.fontFamily = 'Roboto,Arial,sans-serif';
-  controlText.style.fontSize = '16px';
-  controlText.style.lineHeight = '38px';
-  controlText.style.paddingLeft = '8px';
-  controlText.style.paddingRight = '8px';
-  controlText.innerHTML = 'Optimize View';
-  controlUI.appendChild(controlText);
-
-  controlUI.addEventListener('click', () => optimizeCurrentView(map));
-  controlDiv.index = 2;
-  map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(controlDiv);
-
   mapRef = map;
+  const fab = document.getElementById('optimize-fab');
+  if (fab) fab.addEventListener('click', () => optimizeCurrentView(map));
+  document.body.classList.add('no-sheet');
   drawStartMarker();
   restoreLastRoute(map);
 }
 
 function optimizeCurrentView(map) {
+  if (optimizing) return;
   const bounds = map.getBounds();
   if (!bounds) {
-    alert('Map bounds not ready');
+    showToast('Map not ready yet', { type: 'error' });
     return;
   }
+  setBusy(true);
 
   const ne = bounds.getNorthEast();
   const sw = bounds.getSouthWest();
@@ -138,31 +134,26 @@ function optimizeCurrentView(map) {
 
   // Use only the filtered set that is currently displayed
   const source = window.visibleLocations || window.locations || [];
+  const run = (start) => runOptimization(map, start, expanded, source)
+    .catch((e) => showToast('Optimize failed: ' + e.message, { type: 'error' }))
+    .finally(() => setBusy(false));
+  const fallback = () => {
+    const center = map.getCenter();
+    showToast('Using map center — location unavailable');
+    run({ lat: center.lat(), lng: center.lng() });
+  };
 
   if (opts.customStart) {
-    runOptimization(map, { lat: opts.customStart.lat, lng: opts.customStart.lng }, expanded, source);
+    run({ lat: opts.customStart.lat, lng: opts.customStart.lng });
   } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const start = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        runOptimization(map, start, expanded, source);
-      },
-      () => {
-        const center = map.getCenter();
-        const start = { lat: center.lat(), lng: center.lng() };
-        runOptimization(map, start, expanded, source);
-      }
+      (pos) => run({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      fallback,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   } else {
-    const center = map.getCenter();
-    const start = { lat: center.lat(), lng: center.lng() };
-    runOptimization(map, start, expanded, source);
+    fallback();
   }
-}
-
-function isDoNotVisit(loc) {
-  const vc = (loc.visitcode || '').toString().toLowerCase();
-  return vc.includes('do not visit');
 }
 
 function dedupeByLatLng(arr) {
@@ -207,7 +198,7 @@ async function runOptimization(map, start, bounds, source) {
   candidates = dedupeByLatLng(candidates).slice(0, MAX_STOPS);
 
   if (candidates.length < 2) {
-    alert('Not enough eligible stops in the current filtered view.');
+    showToast('Not enough eligible stops in the current filtered view.', { type: 'error' });
     return;
   }
 
@@ -225,7 +216,8 @@ async function runOptimization(map, start, bounds, source) {
 
   const route = {
     stops: result.ordered.map(s => ({
-      name: s.name, address: s.address, latitude: s.latitude, longtitude: s.longtitude
+      name: s.name, address: s.address, latitude: s.latitude, longtitude: s.longtitude,
+      db: s.db, rowid: s.rowid, sts: s.sts, done: false
     })),
     legSecs: result.legSecs,
     totalMins: result.totalMins,
@@ -264,14 +256,14 @@ async function requestRoute(start, candidates) {
 
     if (!res.ok) {
       const errText = await res.text();
-      alert('Routes API error: ' + res.status + '\n' + errText.slice(0, 300));
+      showToast('Routes API error ' + res.status + ': ' + errText.slice(0, 120), { type: 'error' });
       return null;
     }
 
     const data = await res.json();
     const route = data.routes && data.routes[0];
     if (!route) {
-      alert('No route returned');
+      showToast('No route returned', { type: 'error' });
       return null;
     }
 
@@ -289,15 +281,45 @@ async function requestRoute(start, candidates) {
       totalMins: Math.round(durationSecs / 60) + ordered.length * AVG_VISIT_MINS
     };
   } catch (e) {
-    alert('Request failed: ' + e.message);
+    showToast('Request failed: ' + e.message, { type: 'error' });
     return null;
   }
 }
 
+let currentRoute = null;
+function persistRoute() {
+  try { localStorage.setItem(ROUTE_KEY, JSON.stringify(currentRoute)); } catch (e) {}
+}
+function nextStopUrl(s) {
+  return isIOS
+    ? `https://maps.apple.com/?daddr=${s.latitude},${s.longtitude}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${s.latitude},${s.longtitude}`;
+}
+/** Refresh done-state visuals: rows, markers and the primary nav button. */
+function updateDoneUi() {
+  if (!currentRoute) return;
+  const stops = currentRoute.stops;
+  document.querySelectorAll('#route-results .stop-row').forEach((row) => {
+    const done = !!stops[+row.dataset.i].done;
+    row.classList.toggle('done', done);
+    const b = row.querySelector('.done-btn');
+    if (b) b.textContent = done ? '✓' : '○';
+  });
+  routeMarkers.forEach((m, i) => m.setOpacity(stops[i] && stops[i].done ? 0.35 : 1));
+  const next = stops.find((s) => !s.done);
+  const el = document.getElementById('route-primary');
+  if (!el) return;
+  if (!next) { el.innerHTML = '<div class="meta">All stops done 🎉</div>'; return; }
+  const n = stops.indexOf(next) + 1;
+  el.innerHTML = `<a class="nav-btn${isIOS ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Next: ${n}. ${escapeHtml(next.name || next.address || 'Stop')}</a>`;
+}
+
 function renderRoute(map, route) {
+  currentRoute = route;
   showRoutePanel(route.stops, route.totalMins, route.travelMode, route.start, route.legSecs);
   drawPolyline(map, route.encoded);
   drawNumberedMarkers(map, route.stops);
+  updateDoneUi();
 }
 
 function restoreLastRoute(map) {
@@ -405,37 +427,99 @@ function buildAppleMapsUrl(orderedStops, start, modeText) {
   return url;
 }
 
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const SHEET_STATES = ['peek', 'half', 'full'];
+
+function setSheet(state) {
+  const panel = document.getElementById('route-panel');
+  if (!panel) return;
+  panel.classList.remove('peek', 'half', 'full');
+  panel.classList.add(state);
+  panel.style.height = '';
+}
+function currentSheet() {
+  const panel = document.getElementById('route-panel');
+  return SHEET_STATES.find((s) => panel.classList.contains(s)) || 'peek';
+}
+
 function ensurePanel() {
   let panel = document.getElementById('route-panel');
   if (panel) return panel;
   panel = document.createElement('div');
   panel.id = 'route-panel';
+  panel.classList.add('peek');
   panel.innerHTML = `
+    <div id="route-handle"></div>
     <div id="route-panel-header">
-      <span>Optimized Route</span>
+      <span id="route-summary">Optimized Route</span>
       <div class="header-btns">
-        <button id="route-minimize-btn" title="Minimize">–</button>
-        <button id="route-close-btn" title="Close">&times;</button>
+        <button id="route-minimize-btn" title="Minimize" type="button">–</button>
+        <button id="route-close-btn" title="Close" type="button">&times;</button>
       </div>
     </div>
+    <div id="route-primary"></div>
     <div id="route-panel-body">
-      <div id="route-settings"></div>
       <div id="route-results"></div>
+      <details class="route-settings-box"><summary>Route settings</summary><div id="route-settings"></div></details>
     </div>
   `;
   document.body.appendChild(panel);
 
   const minBtn = document.getElementById('route-minimize-btn');
-  minBtn.addEventListener('click', () => {
-    panel.classList.toggle('minimized');
-    minBtn.textContent = panel.classList.contains('minimized') ? '+' : '–';
-    minBtn.title = panel.classList.contains('minimized') ? 'Expand' : 'Minimize';
+  const isDesktop = () => window.matchMedia('(min-width: 640px)').matches;
+  const syncMin = () => {
+    const m = panel.classList.contains('minimized');
+    minBtn.textContent = m ? '+' : '–';
+    minBtn.title = m ? 'Expand' : 'Minimize';
+  };
+  minBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (isDesktop()) panel.classList.toggle('minimized');
+    else setSheet(currentSheet() === 'peek' ? 'half' : 'peek');
+    syncMin();
   });
-  document.getElementById('route-close-btn').addEventListener('click', () => {
+  document.getElementById('route-close-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
     panel.classList.remove('visible', 'minimized');
-    minBtn.textContent = '–';
-    minBtn.title = 'Minimize';
+    document.body.classList.add('no-sheet');
+    syncMin();
   });
+
+  // Tap header to cycle states; drag handle/header to snap to nearest state.
+  const grab = [document.getElementById('route-handle'), document.getElementById('route-panel-header')];
+  let startY = null, startH = 0, moved = false;
+  grab.forEach((el) => {
+    el.addEventListener('touchstart', (e) => {
+      if (isDesktop()) return;
+      startY = e.touches[0].clientY; startH = panel.offsetHeight; moved = false;
+      panel.classList.add('dragging');
+    }, { passive: true });
+    el.addEventListener('touchmove', (e) => {
+      if (startY == null) return;
+      const dy = startY - e.touches[0].clientY;
+      if (Math.abs(dy) > 6) moved = true;
+      if (moved) panel.style.height = Math.max(80, Math.min(window.innerHeight * 0.9, startH + dy)) + 'px';
+    }, { passive: true });
+    el.addEventListener('touchend', () => {
+      if (startY == null) return;
+      panel.classList.remove('dragging');
+      if (moved) {
+        const h = panel.offsetHeight, vh = window.innerHeight;
+        const targets = { peek: 150, half: vh * 0.5, full: vh * 0.9 };
+        const best = SHEET_STATES.reduce((a, b) => Math.abs(targets[b] - h) < Math.abs(targets[a] - h) ? b : a);
+        setSheet(best);
+      }
+      startY = null;
+      el._swallow = moved; // suppress the click that follows a drag
+    });
+    el.addEventListener('click', (e) => {
+      if (el._swallow) { el._swallow = false; return; }
+      if (isDesktop() || e.target.closest('button')) return;
+      setSheet(SHEET_STATES[(SHEET_STATES.indexOf(currentSheet()) + 1) % 3]);
+    });
+  });
+
   refreshSettingsUi();
   return panel;
 }
@@ -456,13 +540,15 @@ function refreshSettingsUi() {
       <div class="start-row">Start: ${opts.customStart
         ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
         : 'GPS (or tap a pin → “Set as start”)'}</div>
-      <button id="opt-rerun" class="nav-btn" style="background:#1a73e8;border:none;cursor:pointer;">Optimize</button>
+      <button id="opt-rerun" type="button" class="nav-btn primary">Optimize</button>
     </div>`;
 
   document.getElementById('opt-target').addEventListener('change', (e) => { opts.targetMins = parseInt(e.target.value, 10); saveOpts(); });
   document.getElementById('opt-days').addEventListener('change', (e) => { opts.recentDays = parseInt(e.target.value, 10); saveOpts(); });
   document.getElementById('opt-recent').addEventListener('change', (e) => { opts.includeRecent = e.target.checked; saveOpts(); });
-  document.getElementById('opt-rerun').addEventListener('click', () => optimizeCurrentView(mapRef));
+  const rerun = document.getElementById('opt-rerun');
+  rerun.disabled = optimizing;
+  rerun.addEventListener('click', () => optimizeCurrentView(mapRef));
   const clr = document.getElementById('opt-clear-start');
   if (clr) clr.addEventListener('click', (e) => { e.preventDefault(); clearRouteStart(); });
 }
@@ -475,39 +561,72 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
   const panel = ensurePanel();
   const modeText = travelMode === 'WALK' ? 'walking' : 'driving';
   const body = document.getElementById('route-results');
+  const e = escapeHtml;
+
+  document.getElementById('route-summary').textContent =
+    `${orderedStops.length} stops · ~${totalMins} min · ${modeText}`;
+
+  const appleUrl = buildAppleMapsUrl(orderedStops, start, modeText);
+  const segments = buildGoogleMapsSegments(orderedStops, start, modeText);
+  const googleBtn = (seg, label) => `<a class="nav-btn" href="${e(seg.url)}" target="_blank" rel="noopener">${e(label)}</a>`;
+  const appleBtn = (label) => `<a class="nav-btn apple" href="${e(appleUrl)}" target="_blank" rel="noopener">${label}</a>`;
+  const seg1Label = segments.length > 1 ? `(${segments[0] && segments[0].label})` : '';
+
+  // One primary navigation button, always visible in peek.
+  let primary = '';
+  if (isIOS && appleUrl) primary = appleBtn('Start in Apple Maps');
+  else if (segments.length) primary = googleBtn(segments[0], ('Start in Google Maps ' + seg1Label).trim());
+  document.getElementById('route-primary').innerHTML = primary;
 
   const startsAt = opts.customStart ? 'custom start' : 'GPS';
-  let html = `<div class="meta">~${totalMins} min total &middot; ${modeText} &middot; ${orderedStops.length} stops<br>From filtered map view &middot; starts at ${startsAt}</div><ol>`;
+  let html = `<div class="meta">From filtered map view &middot; starts at ${startsAt}</div><ol>`;
   let t = Date.now();
   orderedStops.forEach((s, i) => {
     t += ((legSecs && legSecs[i]) || 0) * 1000; // travel to this stop
-    const eta = legSecs && legSecs.length ? `<span class="eta">${fmtTime(new Date(t))}</span> ` : '';
-    html += `<li>${eta}${escapeHtml(s.name || s.address || 'Stop')}</li>`;
+    const eta = legSecs && legSecs.length ? `<span class="eta">${fmtTime(new Date(t))}</span>` : '';
+    const goUrl = isIOS
+      ? `https://maps.apple.com/?daddr=${s.latitude},${s.longtitude}`
+      : `https://www.google.com/maps/dir/?api=1&destination=${s.latitude},${s.longtitude}`;
+    const detailsUrl = s.db != null && s.rowid != null
+      ? `https://dailyfikr.github.io/VisitDetails.html?DB=${encodeURIComponent(s.db)}&ID=${encodeURIComponent(s.rowid)}&Name=${encodeURIComponent(s.name)}&Sts=${encodeURIComponent(s.sts)}`
+      : '';
+    html += `<li class="stop-row" data-i="${i}"><button type="button" class="done-btn" aria-label="Mark done">○</button><span class="num">${i + 1}</span>` +
+      `<span class="nm">${eta}${e(s.name || s.address || 'Stop')}</span>` +
+      (detailsUrl ? `<a class="go" href="${e(detailsUrl)}" target="_blank" rel="noopener">Visit</a>` : '') +
+      `<a class="go" href="${e(goUrl)}" target="_blank" rel="noopener">Go</a></li>`;
     t += AVG_VISIT_MINS * 60 * 1000; // time spent at this stop
   });
   html += `</ol>`;
 
-  const appleUrl = buildAppleMapsUrl(orderedStops, start, modeText);
-  if (appleUrl) {
-    html += `<a class="nav-btn" href="${appleUrl}" target="_blank" style="background:#007aff;">Open full route in Apple Maps</a>`;
-  }
-
-  const segments = buildGoogleMapsSegments(orderedStops, start, modeText);
-  if (segments.length === 1) {
-    html += `<a class="nav-btn" href="${segments[0].url}" target="_blank">Open in Google Maps</a>`;
-  } else if (segments.length > 1) {
-    html += `<div class="meta" style="margin-top:10px;">Google Maps supports fewer stops. Open in segments:</div>`;
-    segments.forEach((seg, idx) => {
-      html += `<a class="nav-btn" href="${seg.url}" target="_blank" style="display:block;margin-top:6px;">Google Maps – Segment ${idx + 1} (${seg.label})</a>`;
-    });
-  }
+  // Remaining navigation options (primary button covers the first one)
+  if (appleUrl && !isIOS) html += appleBtn('Open full route in Apple Maps');
+  if (isIOS && segments.length) html += googleBtn(segments[0], ('Google Maps ' + seg1Label).trim());
+  segments.forEach((seg, idx) => {
+    if (idx === 0) return;
+    html += googleBtn(seg, `Google Maps – Segment ${idx + 1} (${seg.label})`);
+  });
 
   body.innerHTML = html;
+  body.querySelectorAll('.stop-row').forEach((row) => {
+    row.addEventListener('click', (ev) => {
+      if (ev.target.closest('a')) return;
+      const s = orderedStops[+row.dataset.i];
+      if (ev.target.closest('.done-btn')) {
+        s.done = !s.done;
+        persistRoute();
+        updateDoneUi();
+        return;
+      }
+      if (mapRef && s) { mapRef.panTo({ lat: s.latitude, lng: s.longtitude }); mapRef.setZoom(18); }
+    });
+  });
+
   panel.classList.remove('minimized');
   panel.classList.add('visible');
-  const minBtn = document.getElementById('route-minimize-btn');
-  minBtn.textContent = '–';
-  minBtn.title = 'Minimize';
+  document.body.classList.remove('no-sheet');
+  setSheet('peek');
+  document.getElementById('route-minimize-btn').textContent = '–';
+  updateDoneUi();
 }
 
 window.addOptimizeControl = addOptimizeControl;

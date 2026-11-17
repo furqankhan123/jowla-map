@@ -9,44 +9,34 @@ function isDoNotVisit(loc) {
   return vc.indexOf('do not visit') !== -1;
 }
 
-function CenterControl(controlDiv, map) {
-  var controlUI = document.createElement('div');
-  controlUI.style.backgroundColor = '#fff';
-  controlUI.style.border = '2px solid #fff';
-  controlUI.style.borderRadius = '3px';
-  controlUI.style.boxShadow = '0 2px 6px rgba(0,0,0,.3)';
-  controlUI.style.cursor = 'pointer';
-  controlUI.style.marginBottom = '22px';
-  controlUI.style.textAlign = 'center';
-  controlUI.title = 'Click to recenter the map';
-  controlDiv.appendChild(controlUI);
-
-  var controlText = document.createElement('div');
-  controlText.style.color = 'rgb(25,25,25)';
-  controlText.style.fontFamily = 'Roboto,Arial,sans-serif';
-  controlText.style.fontSize = '16px';
-  controlText.style.lineHeight = '38px';
-  controlText.style.paddingLeft = '5px';
-  controlText.style.paddingRight = '5px';
-  controlText.innerHTML = 'Nearby';
-  controlUI.appendChild(controlText);
-
-  controlUI.addEventListener('click', function() {
-    infoWindow = new google.maps.InfoWindow;
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function(position) {
-        var pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-        map.setCenter(pos);
-        map.setZoom(17);
-      }, function() {
-        handleLocationError(true, infoWindow, map.getCenter());
-      });
-    }
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
 }
-function handleLocationError(browserHasGeolocation, infoWindow, pos) {
-  map.setCenter(pos);
-  map.setZoom(16);
+window.escapeHtml = escapeHtml;
+
+var userDot = null;
+function locateUser() {
+  if (!navigator.geolocation) {
+    if (window.showToast) showToast('Location not supported', { type: 'error' });
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(function(position) {
+    var pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+    map.setCenter(pos);
+    map.setZoom(17);
+    if (userDot) {
+      userDot.setPosition(pos);
+    } else {
+      userDot = new google.maps.Marker({
+        position: pos, map: map, clickable: false, zIndex: 500, title: 'You are here',
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285f4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 }
+      });
+    }
+  }, function() {
+    if (window.showToast) showToast('Could not get your location', { type: 'error' });
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
 }
 
 function initialiseMap() {
@@ -80,16 +70,18 @@ function initialiseMap() {
     });
     console.log('locations size (after DNV filter) ' + locations.length);
 
-    var mapOptions = { zoom: 16, center: frisco };
+    var mapOptions = {
+      zoom: 16, center: frisco,
+      gestureHandling: 'greedy', clickableIcons: false,
+      mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+      zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER }
+    };
     map = new google.maps.Map(document.getElementById('map'), mapOptions);
     infoWindow = new google.maps.InfoWindow;
 
     applyUrlFilters();
 
-    var centerControlDiv = document.createElement('div');
-    var centerControl = new CenterControl(centerControlDiv, map);
-    centerControlDiv.index = 1;
-    map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(centerControlDiv);
+    document.getElementById('locate-fab').addEventListener('click', locateUser);
 
     if (typeof addOptimizeControl === 'function') {
       addOptimizeControl(map);
@@ -165,7 +157,7 @@ function clearMarkers() {
 
 function setLocations(map, locs) {
   var bounds = new google.maps.LatLngBounds();
-  var infowindow = new google.maps.InfoWindow({ content: "Content String", maxWidth: 350, maxHeight: 400 });
+  var infowindow = new google.maps.InfoWindow({ content: "Content String", maxWidth: Math.min(320, window.innerWidth - 48) });
   var count = 0;
   for (var i = 0; i < locs.length; i++) {
     if (!locs[i].latitude || !locs[i].longtitude) continue;
@@ -191,13 +183,20 @@ function createMarker(map, location, infowindow) {
   });
   google.maps.event.addListener(marker, 'click', function() {
     window.__pendingStart = location;
-    infowindow.setContent('<div>' +
-      ((location.name === undefined) ? "" : ('<p><strong> Name: ' + location.name + ' </strong></p>')) +
-      ((location.address === undefined) ? location.address : ('<a href=https://www.google.com/maps/dir/?api=1&destination="' + encodeURIComponent(location.address) + '">' + location.address + '</a>')) + '</strong></p>' +
-      ((location.comments === undefined) ? "" : ('<p><strong>Comments: </strong>' + location.comments + '</p>')) +
-      ((location.visitdate === undefined) ? "" : ('<p><strong>Last Visit Date: </strong>' + location.visitdate + '</p>')) +
-      ('<a href=https://dailyfikr.github.io/VisitDetails.html?DB=' + location.db + '&ID=' + location.rowid + '&Name=' + encodeURI(location.name) + '&Sts=' + encodeURI(location.sts) + ' target ="_blank"> Visit Details </a>') +
-      '<p><a href="#" onclick="if(window.setRouteStart){setRouteStart(window.__pendingStart);}return false;">Set as start</a></p>' +
+    var e = escapeHtml;
+    var dest = location.latitude + ',' + location.longtitude;
+    var navUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(dest);
+    var detailsUrl = 'https://dailyfikr.github.io/VisitDetails.html?DB=' + encodeURIComponent(location.db) +
+      '&ID=' + encodeURIComponent(location.rowid) + '&Name=' + encodeURIComponent(location.name) +
+      '&Sts=' + encodeURIComponent(location.sts);
+    infowindow.setContent('<div class="iw">' +
+      (location.name ? '<div class="iw-name">' + e(location.name) + '</div>' : '') +
+      (location.address ? '<p>' + e(location.address) + '</p>' : '') +
+      (location.comments ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +
+      (location.visitdate ? '<p><strong>Last visit:</strong> ' + e(location.visitdate) + '</p>' : '') +
+      '<a class="iw-btn" href="' + e(navUrl) + '" target="_blank" rel="noopener">Navigate</a>' +
+      '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener">Visit Details</a>' +
+      '<button type="button" class="iw-btn alt" onclick="if(window.setRouteStart){setRouteStart(window.__pendingStart);}return false;">Set as start</button>' +
       '</div>');
     infowindow.open(map, marker);
   });
