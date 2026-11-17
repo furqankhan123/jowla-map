@@ -1,0 +1,45 @@
+# Jowla Map
+
+A visit-planning map for DFW, driven by a Google Sheet and hosted as static pages (GitHub Pages). Markers come from the sheet; **Optimize** builds an ordered, numbered route of nearby unvisited stops.
+
+## Objective
+
+> I want to reduce the time in clicking around the app. mainly finding a marker, opening it in my nav app, then filling the visit details, and then finding the next marker to visit.
+
+The loop this targets, and how each feature shortens it:
+
+| Step | Before | Now |
+|---|---|---|
+| Find a marker | Pan/zoom and tap pins | **Optimize** picks nearby unvisited stops and numbers them |
+| Navigate | Open each pin's infowindow | **Go: N. Name** button, Google/Apple Maps handoff |
+| Log the visit | Open the form, then mark progress by hand | **Log visit ✓** opens the form and marks the stop done |
+| Next marker | Find it again | The primary button immediately shows the next stop |
+
+## Features
+- Filters home page (`index.html`) and the map (`newindex.html`).
+- Optimize via the Routes API: walking in dense clusters, driving otherwise; Do-Not-Visit rows excluded.
+- Numbered route markers, ETAs per stop, fit-to-time (30/45/60 min), custom start ("Set as start" on a pin).
+- Visit → Next flow with Undo toast; done state persists across reloads.
+- Google Maps segments and Apple Maps multi-stop handoff.
+- Mobile-first bottom sheet (peek/half/full).
+
+## A typical session
+1. Open `newindex.html`, tap **Optimize**.
+2. Tap **Go: 1. Name** and drive/walk there.
+3. Tap **Log visit ✓**, fill the form, come back; the sheet shows **Go: 2. …**.
+4. Repeat. Undo from the toast if you logged the wrong stop.
+
+## Files
+- `index.html`: filters home page
+- `newindex.html`: map page
+- `map.js`: sheet loading, markers, infowindow
+- `optimize-route.js`: Optimize, route panel, Visit → Next, settings
+- `map.css`: styles
+- `PLAN.md`: roadmap
+- `CHANGELOG.md`: release notes
+
+## Setup and deploy
+Static hosting only; push to GitHub Pages. `map.js` reads sheet range `DFWDB!A2:V` with these columns (0-indexed): 0 db, 2 id, 3 name, 4 address, 5 latitude, 6 longitude, 7 city, 8 zip, 11 unit, 12 marker, 13 status, 14 visit code, 15 comments, 16 visit date, 21 row id. The Maps/Sheets API key must stay HTTP-referrer restricted.
+
+## Releasing
+Bump `APP_VERSION` in `optimize-route.js` and the `?v=` strings in `newindex.html`, update `CHANGELOG.md`, then tag `vX.Y.Z` (annotated) and push with `--follow-tags`.

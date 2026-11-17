@@ -1,8 +1,8 @@
 # Jowla Map — Optimize Nearby Route Plan
 
 ## Goal
-Reduce manual “pick next nearby pin” work on the dailyfikr map.  
-Generate an ordered route of nearby unvisited stops that prefers walking in dense clusters and aims to fit as many visits as possible into ~1 hour, while staying inside the Google Maps free tier.
+Reduce the time spent clicking around the app: find a marker, open it in the nav app, fill the visit details, find the next marker.
+Optimize generates an ordered route of nearby unvisited stops (~1 hour, walking in dense clusters), and Visit → Next collapses logging and advancing into one tap, all within the Google Maps free tier.
 
 ## Current baseline
 - Map lives at `https://dailyfikr.github.io/` (and variants such as `newindex.html`).
@@ -36,8 +36,8 @@ Files changed / added:
 
 ## Refinements (status)
 
-Done: 1 (unvisited filter), 2 (custom start), 3 (numbered markers), 5 (fit-to-time), 6 (ETAs, persisted route, settings).
-Still open: 3 (walk/drive path coloring), 4 (cluster suggestions), 6 ("Mark visited" sheet write-back).
+Done: 1 (unvisited filter), 2 (custom start), 3 (numbered markers), 5 (fit-to-time), 6 (ETAs, persisted route, settings, "Mark visited" via Visit → Next).
+Still open: 3 (walk/drive path coloring), 4 (cluster suggestions), sheet write-back.
 
 ### 1. Stronger unvisited filter
 - Skip stops whose `visitdate` is within the last 30/90/180 days (make the window configurable).
@@ -70,11 +70,10 @@ Still open: 3 (walk/drive path coloring), 4 (cluster suggestions), 6 ("Mark visi
   - Persist the last route so a refresh doesn’t lose it.
 
 ## Suggested workflow once live
-1. Open the map for the desired city/area.
-2. Tap **Optimize Nearby** (or set a custom start first).
-3. Review the ordered list and total time in the side panel.
-4. Tap **Open in Google Maps** and follow the route.
-5. After each visit, use the existing Visit Details link to log the outcome.
+1. Open the map and tap **Optimize** (or set a custom start first).
+2. Tap **Go: N. Name** and follow the route.
+3. Tap **Log visit ✓**; the form opens and the stop is marked done.
+4. Return to the map; the next **Go** button is ready. Undo from the toast if needed.
 
 ## Future integration notes
 - The feature is client-side only and reuses the already-loaded `locations` array, so it works with the current sheetrock / Sheets API loading path.
