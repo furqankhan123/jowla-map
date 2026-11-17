@@ -190,12 +190,14 @@ function createMarker(map, location, infowindow) {
     icon: { url: markerurl, scaledSize: new google.maps.Size(40, 40) }
   });
   google.maps.event.addListener(marker, 'click', function() {
+    window.__pendingStart = location;
     infowindow.setContent('<div>' +
       ((location.name === undefined) ? "" : ('<p><strong> Name: ' + location.name + ' </strong></p>')) +
       ((location.address === undefined) ? location.address : ('<a href=https://www.google.com/maps/dir/?api=1&destination="' + encodeURIComponent(location.address) + '">' + location.address + '</a>')) + '</strong></p>' +
       ((location.comments === undefined) ? "" : ('<p><strong>Comments: </strong>' + location.comments + '</p>')) +
       ((location.visitdate === undefined) ? "" : ('<p><strong>Last Visit Date: </strong>' + location.visitdate + '</p>')) +
       ('<a href=https://dailyfikr.github.io/VisitDetails.html?DB=' + location.db + '&ID=' + location.rowid + '&Name=' + encodeURI(location.name) + '&Sts=' + encodeURI(location.sts) + ' target ="_blank"> Visit Details </a>') +
+      '<p><a href="#" onclick="if(window.setRouteStart){setRouteStart(window.__pendingStart);}return false;">Set as start</a></p>' +
       '</div>');
     infowindow.open(map, marker);
   });

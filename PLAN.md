@@ -34,7 +34,10 @@ Files changed / added:
 - `newindex.html` — loads the new script
 - `map.css` — styles for the side panel
 
-## Refinements to add next
+## Refinements (status)
+
+Done: 1 (unvisited filter), 2 (custom start), 3 (numbered markers), 5 (fit-to-time), 6 (ETAs, persisted route, settings).
+Still open: 3 (walk/drive path coloring), 4 (cluster suggestions), 6 ("Mark visited" sheet write-back).
 
 ### 1. Stronger unvisited filter
 - Skip stops whose `visitdate` is within the last 30/90/180 days (make the window configurable).

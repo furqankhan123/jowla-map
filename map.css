@@ -129,3 +129,12 @@
     font-size: 13px;
     margin-bottom: 8px;
 }
+
+/* Optimizer settings + ETA */
+#route-settings .settings { border-bottom: 1px solid #eee; margin-bottom: 10px; padding-bottom: 8px; }
+#route-settings label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#route-settings select { padding: 4px; }
+#route-settings label.chk { justify-content: flex-start; gap: 6px; }
+#route-settings .start-row { font-size: 13px; color: #555; margin: 4px 0; }
+#route-settings .nav-btn { width: 100%; box-sizing: border-box; text-align: center; margin-top: 6px; }
+#route-panel-body .eta { color: #1a73e8; font-weight: bold; font-size: 12px; margin-right: 4px; }
