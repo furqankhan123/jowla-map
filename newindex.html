@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>Jowla Map</title>
-    <link rel="stylesheet" href="map.css?v=0.6.0">
+    <link rel="stylesheet" href="map.css?v=0.7.0">
 </head>
 
 <body id="black">
@@ -16,13 +16,14 @@
 
 <div id="fab-group">
     <button id="locate-fab" class="fab" type="button" aria-label="Go to my location" title="My location">&#9678;</button>
+    <button id="filter-fab" class="fab" type="button" aria-label="Filters" title="Filters">&#9776;</button>
     <button id="optimize-fab" class="fab-pill" type="button" title="Optimize the stops currently shown on the map">Optimize</button>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
-<script src="map.js?v=0.6.0"></script>
-<script src="optimize-route.js?v=0.6.0"></script>
+<script src="map.js?v=0.7.0"></script>
+<script src="optimize-route.js?v=0.7.0"></script>
 <script async defer
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ&libraries=geometry&callback=initialiseMap">
 </script>

@@ -90,6 +90,8 @@ function initialiseMap() {
     applyUrlFilters();
 
     document.getElementById('locate-fab').addEventListener('click', locateUser);
+    var ff = document.getElementById('filter-fab');
+    if (ff) ff.addEventListener('click', openFilterSheet);
 
     if (typeof addOptimizeControl === 'function') {
       addOptimizeControl(map);
@@ -109,53 +111,143 @@ function parseCityParam(raw) {
   }
 }
 
+function matchesFilters(loc, f) {
+  var now = new Date();
+  if (f.city && loc.city !== f.city) return false;
+  if (f.status) {
+    var s = (loc.sts || '').toLowerCase();
+    if (f.status === 'S' && s.indexOf('student') === -1) return false;
+    if (f.status === 'K' && s.indexOf('khususi') === -1) return false;
+    if (f.status === 'F' && s.indexOf('follow') === -1) return false;
+    if (f.status === 'W' && s.indexOf('week') === -1) return false;
+  }
+  if (f.name && !(loc.name || '').toLowerCase().includes(f.name.toLowerCase())) return false;
+  if (f.visited) {
+    if (!loc.visitdate) {
+      if (f.visited !== '0') return false;
+    } else {
+      var visit = new Date(loc.visitdate);
+      if (!isNaN(visit.getTime())) {
+        var days = (now - visit) / (1000 * 60 * 60 * 24);
+        if (f.visited === '0') return false;
+        if (f.visited === '1' && days < 30) return false;
+        if (f.visited === '3' && days < 90) return false;
+        if (f.visited === '6' && days < 180) return false;
+      }
+    }
+  }
+  return true;
+}
+
+var currentFilters = { city: '', status: '', name: '', visited: '' };
+
 function applyUrlFilters() {
-  var cityParam = $.urlParam('City');
+  var city = parseCityParam($.urlParam('City'));
   var stts = $.urlParam('S');
   var searchname = $.urlParam('F');
   var visited = $.urlParam('P');
-
-  var city = parseCityParam(cityParam);
   if (searchname) {
     try { searchname = decodeURIComponent(searchname); } catch(e) {}
   }
+  var clean = function(v) { return (!v || v === 'null' || v === 'All' || v === 'Search') ? '' : v; };
+  applyFilters({ city: clean(city), status: clean(stts), name: clean(searchname), visited: clean(visited) });
+}
 
-  console.log('Parsed city:', city, 'status:', stts, 'name:', searchname, 'visited:', visited);
+/** f = {city, status, name, visited}; empty string means "no filter". */
+function applyFilters(f) {
+  currentFilters = f;
+  visibleLocations = locations.filter(function(loc) { return matchesFilters(loc, f); });
 
-  var now = new Date();
-  visibleLocations = locations.filter(function(loc) {
-    if (city && loc.city !== city) return false;
-    if (stts && stts !== 'null') {
-      var s = (loc.sts || '').toLowerCase();
-      if (stts === 'S' && s.indexOf('student') === -1) return false;
-      if (stts === 'K' && s.indexOf('khususi') === -1) return false;
-      if (stts === 'F' && s.indexOf('follow') === -1) return false;
-      if (stts === 'W' && s.indexOf('week') === -1) return false;
-    }
-    if (searchname && searchname !== 'Search' && searchname !== 'null') {
-      if (!(loc.name || '').toLowerCase().includes(searchname.toLowerCase())) return false;
-    }
-    if (visited && visited !== 'All' && visited !== 'null') {
-      if (!loc.visitdate) {
-        if (visited !== '0') return false;
-      } else {
-        var visit = new Date(loc.visitdate);
-        if (!isNaN(visit.getTime())) {
-          var days = (now - visit) / (1000 * 60 * 60 * 24);
-          if (visited === '0') return false;
-          if (visited === '1' && days < 30) return false;
-          if (visited === '3' && days < 90) return false;
-          if (visited === '6' && days < 180) return false;
-        }
-      }
-    }
-    return true;
-  });
-
-  console.log('visible after filter:', visibleLocations.length);
   window.visibleLocations = visibleLocations;
   clearMarkers();
   setLocations(map, visibleLocations);
+}
+
+/* ---- In-map filter sheet ---- */
+function filtersToQuery(f) {
+  var params = [];
+  if (f.city) params.push('City===' + encodeURIComponent("'" + f.city + "'"));
+  if (f.status) params.push('S=' + f.status);
+  params.push('F=' + encodeURIComponent(f.name || 'Search'));
+  if (f.visited) params.push('P=' + f.visited);
+  return '?' + params.join('&');
+}
+
+function countMatches(f) {
+  return locations.filter(function(loc) { return matchesFilters(loc, f); }).length;
+}
+
+function ensureFilterSheet() {
+  var el = document.getElementById('filter-sheet');
+  if (el) return el;
+  var cities = {};
+  locations.forEach(function(l) { if (l.city) cities[l.city] = true; });
+  var cityOpts = '<option value="">All</option>' + Object.keys(cities).sort().map(function(c) {
+    return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>';
+  }).join('');
+  el = document.createElement('div');
+  el.id = 'filter-sheet';
+  el.innerHTML =
+    '<div class="fs-head"><strong>Filters</strong><button type="button" id="fs-close" aria-label="Close">&times;</button></div>' +
+    '<label>City<select id="fs-city">' + cityOpts + '</select></label>' +
+    '<label>Status<select id="fs-status"><option value="">All</option><option value="S">Students</option><option value="K">Khususi</option><option value="F">Follow Ups</option><option value="W">3D</option></select></label>' +
+    '<label>Visited<select id="fs-visited"><option value="">All</option><option value="0">Not Yet Visited</option><option value="6">More than 180 days</option><option value="3">More than 90 days</option><option value="1">More than 30 days</option></select></label>' +
+    '<label>Name contains<input id="fs-name" type="text" placeholder="leave blank for all"></label>' +
+    '<div class="fs-count" id="fs-count"></div>' +
+    '<div class="fs-btns"><button type="button" id="fs-reset" class="fs-alt">Reset</button><button type="button" id="fs-apply">Apply</button></div>';
+  document.body.appendChild(el);
+
+  var read = function() {
+    return {
+      city: document.getElementById('fs-city').value,
+      status: document.getElementById('fs-status').value,
+      visited: document.getElementById('fs-visited').value,
+      name: document.getElementById('fs-name').value.trim()
+    };
+  };
+  var updateCount = function() {
+    document.getElementById('fs-count').textContent = countMatches(read()) + ' stops match';
+  };
+  ['fs-city', 'fs-status', 'fs-visited'].forEach(function(id) { document.getElementById(id).addEventListener('change', updateCount); });
+  document.getElementById('fs-name').addEventListener('input', updateCount);
+  document.getElementById('fs-close').addEventListener('click', closeFilterSheet);
+  document.getElementById('fs-reset').addEventListener('click', function() {
+    fillFilterSheet({ city: '', status: '', name: '', visited: '' });
+    updateCount();
+  });
+  document.getElementById('fs-apply').addEventListener('click', function() {
+    var f = read();
+    if (window.clearRoute) clearRoute();
+    applyFilters(f);
+    try { history.replaceState(null, '', location.pathname + filtersToQuery(f)); } catch (e) {}
+    try {
+      localStorage.setItem('jowla-filters', JSON.stringify({
+        myCity: f.city || 'All', myStatus: f.status || 'All', myVisited: f.visited || 'All', search: f.name
+      }));
+    } catch (e) {}
+    closeFilterSheet();
+    if (window.showToast) showToast('Filters applied: ' + visibleLocations.length + ' stops');
+  });
+  el._updateCount = updateCount;
+  return el;
+}
+
+function fillFilterSheet(f) {
+  document.getElementById('fs-city').value = f.city;
+  document.getElementById('fs-status').value = f.status;
+  document.getElementById('fs-visited').value = f.visited;
+  document.getElementById('fs-name').value = f.name;
+}
+
+function openFilterSheet() {
+  var el = ensureFilterSheet();
+  fillFilterSheet(currentFilters);
+  el._updateCount();
+  el.classList.add('open');
+}
+function closeFilterSheet() {
+  var el = document.getElementById('filter-sheet');
+  if (el) el.classList.remove('open');
 }
 
 function clearMarkers() {

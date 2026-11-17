@@ -75,7 +75,7 @@ Still open: walk/drive path coloring, cluster suggestions, in-map filters, PWA, 
 |---|------|--------|-----------|----------|------|
 | 1 | Mobile-first pass | Done (6bac1ee) | - | no | L |
 | 2 | Done / Next stop | Done (6bac1ee) | 1 | no | M |
-| 3 | In-map filter sheet | Next | 1 | no | M |
+| 3 | In-map filter sheet | Done | 1 | no | M |
 | 4 | PWA install + offline shell | Next | 1 (independent of 3) | no | M |
 | 5 | Sheet write-back "Mark visited" | After 3-4 | 2 | Apps Script | M |
 | 6 | Cluster suggestions | After 3 | 1 | no | M |
@@ -144,16 +144,16 @@ Not built until routing supports mixed modes (currently one `travelMode` per rou
 - **Cause:** Google's InfoWindow reserves a header row (`.gm-style-iw-ch`) for the close button; our content sits below it, and the dark theme makes it a visible empty band.
 - **Fix:** create the window with `headerDisabled: true` in `map.js` (both `new google.maps.InfoWindow` calls, lines ~88 and ~168) and add our own close "×" inside `.iw` (top-right, 44px target) that calls `infowindow.close()`. Fallback CSS: `.gm-style-iw-ch { padding-top: 0; min-height: 0; }` and trim `.gm-style-iw-d` top padding.
 - **Verify:** tap a marker: card starts directly with the name, close button works, tall content still scrolls, dark and light themes.
-### C. Restore the Apple Maps option
-- **Symptom:** on iPhone there is no Apple Maps choice where it matters. The marker popup "Navigate" in `map.js` (~line 197) is Google-only. Apple support survives only in `optimize-route.js` (`buildAppleMapsUrl`, `isIOS`, the primary/"Open full route" buttons, per-row "Go"). The mobile pass (`6bac1ee`) added the popup without it. The route sheet's Apple buttons are also easy to miss: the primary is Apple only if `buildAppleMapsUrl` is non-null (it returns null above `MAX_APPLE_STOPS` = 15 stops), otherwise it silently falls back to Google.
+### C. Restore the Apple Maps option (all platforms, no iOS detection)
+- **Symptom:** the marker popup "Navigate" in `map.js` (~line 197) is Google-only. Apple support survives only in `optimize-route.js` (`buildAppleMapsUrl`, primary/"Open full route" buttons, per-row "Go"), and it is gated on `isIOS`. The sheet's Apple primary also silently falls back to Google above `MAX_APPLE_STOPS` = 15 stops.
 - **Spec:**
-  1. Add one shared helper `navLinks(lat, lng)` (new small `nav.js`, or exported from optimize-route.js) returning `{apple, google}` URLs, plus `isIOS`. Apple single stop: `https://maps.apple.com/?daddr=LAT,LNG&dirflg=d`; Google: existing `dir/?api=1&destination=`. Use it in the popup, the Go row buttons, and the Next-stop pill so URL logic lives in one place.
-  2. Add a user setting "Preferred maps app" (Auto / Apple / Google) in Route settings, stored in localStorage `jowla-nav-pref`. Auto = Apple on iOS, Google elsewhere (current behavior). The preferred app is the primary button; the other is a secondary link.
-  3. Popup: primary "Navigate" opens the preferred app; a second smaller "Open in Apple/Google Maps" button opens the other (iOS only shows both; non-iOS shows Google only, plus Apple as a web link only if pref is Apple).
-  4. Route sheet: when more than 15 stops on Apple, split into Apple segments of 15 like the Google segments (`buildGoogleMapsSegments` pattern) instead of dropping the Apple button; label "Apple Maps – Segment N".
-  5. Harden `isIOS` for in-app/third-party iOS browsers (Brave/Chrome on iOS UA contains "iPhone"; iPadOS reports MacIntel, already handled).
+  1. Remove `isIOS` entirely (`optimize-route.js` ~line 472 and every use). Apple Maps links (`https://maps.apple.com/...`) work in any browser: they open the Maps app on Apple devices and Apple Maps on the web elsewhere, so always offer both apps.
+  2. Add one shared helper `navLinks(lat, lng)` (new small `nav.js`, or exported from optimize-route.js) returning `{apple, google}` URLs. Apple: `https://maps.apple.com/?daddr=LAT,LNG&dirflg=d`; Google: existing `dir/?api=1&destination=`. Use it in the popup, the Go row, and the Next-stop pill so URL logic lives in one place.
+  3. Add a setting "Preferred maps app" (Google / Apple) in Route settings, stored in localStorage `jowla-nav-pref`, default Google. The preferred app is the primary button; the other is always shown as a secondary link.
+  4. Popup: primary "Navigate" opens the preferred app; a second button "Open in Apple/Google Maps" opens the other one.
+  5. Route sheet: show both Google and Apple buttons for everyone. When more than 15 stops, split Apple into 15-stop segments like `buildGoogleMapsSegments` ("Apple Maps – Segment N") instead of dropping it.
 - **Files:** map.js, optimize-route.js, map.css (secondary button style), settings markup in newindex.html.
-- **Verify:** iPhone Safari and Brave/Chrome: popup, Next pill, row Go and sheet primary each open Apple Maps by default; switching pref to Google flips all of them; desktop/Android never show Apple unless chosen; 16+ stops yields multiple Apple segments.
+- **Verify:** on iPhone, Android and desktop the popup, Next pill, row Go and sheet all show both apps; the preference flips which is primary; 16+ stops yields multiple Apple segments; no reference to `isIOS` remains.
 ## Suggested workflow once live
 1. Open the map and tap **Optimize** (or set a custom start first).
 2. Tap **Go: N. Name** and follow the route.

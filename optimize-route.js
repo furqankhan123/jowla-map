@@ -83,7 +83,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.6.0';
+const APP_VERSION = '0.7.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -681,5 +681,14 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
   updateDoneUi();
 }
 
+window.clearRoute = function () {
+  clearRouteOverlays();
+  currentRoute = null;
+  try { localStorage.removeItem(ROUTE_KEY); } catch (e) {}
+  const panel = document.getElementById('route-panel');
+  if (panel) panel.classList.remove('visible', 'minimized');
+  document.body.classList.add('no-sheet');
+  document.body.classList.remove('sheet-expanded');
+};
 window.addOptimizeControl = addOptimizeControl;
 window.setRouteStart = setRouteStart;
