@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.16.0';
+const APP_VERSION = '0.16.1';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -579,36 +579,63 @@ function refreshSettingsUi() {
   if (window.bindSyncSettings) bindSyncSettings();
 }
 
-/** Address entry for a different end point (Places Autocomplete, Geocoder fallback, or current location). */
+/** Address entry for a different end point: Places (New) autocomplete suggestions, Geocoder fallback, or current location. */
 function openEndPicker() {
   const pk = document.getElementById('end-picker');
   if (!pk) return;
   pk.innerHTML = '<div class="meta">Finish the route at:</div>' +
     '<input id="end-addr" type="text" placeholder="Type an address or place" autocomplete="off">' +
+    '<div id="end-sugg"></div>' +
     '<div class="end-btns"><button type="button" id="end-go" class="nav-btn">Set end</button>' +
     '<button type="button" id="end-here" class="nav-btn set-end">Use my location</button></div>';
   pk.hidden = false;
   const input = document.getElementById('end-addr');
-  let chosen = null;
-  if (window.google && google.maps.places) {
-    const ac = new google.maps.places.Autocomplete(input, { fields: ['geometry', 'name', 'formatted_address'] });
-    if (mapRef && mapRef.getBounds()) ac.setBounds(mapRef.getBounds());
-    ac.addListener('place_changed', () => {
-      const pl = ac.getPlace();
-      if (pl && pl.geometry) {
-        chosen = { lat: pl.geometry.location.lat(), lng: pl.geometry.location.lng(), name: pl.name || pl.formatted_address };
-        rerouteWithEnd(chosen);
+  const list = document.getElementById('end-sugg');
+  let timer = null, placesLib = null, token = null;
+
+  const geocode = (q) => new google.maps.Geocoder().geocode({ address: q }, (res, status) => {
+    if (status !== 'OK' || !res[0]) { showToast('Address not found', { type: 'error' }); return; }
+    const l = res[0].geometry.location;
+    rerouteWithEnd({ lat: l.lat(), lng: l.lng(), name: q });
+  });
+  const loadPlaces = () => placesLib || (placesLib = google.maps.importLibrary('places'));
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 3) { list.innerHTML = ''; return; }
+    timer = setTimeout(async () => {
+      try {
+        const lib = await loadPlaces();
+        token = token || new lib.AutocompleteSessionToken();
+        const req = { input: q, sessionToken: token };
+        const b = mapRef && mapRef.getBounds();
+        if (b) req.locationBias = b;
+        const { suggestions } = await lib.AutocompleteSuggestion.fetchAutocompleteSuggestions(req);
+        list.innerHTML = '';
+        suggestions.slice(0, 5).forEach((sg) => {
+          const pp = sg.placePrediction;
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'pick-end';
+          btn.textContent = pp.text.toString();
+          btn.addEventListener('click', async () => {
+            const place = pp.toPlace();
+            await place.fetchFields({ fields: ['location', 'displayName', 'formattedAddress'] });
+            token = null;
+            rerouteWithEnd({ lat: place.location.lat(), lng: place.location.lng(), name: place.displayName || place.formattedAddress });
+          });
+          list.appendChild(btn);
+        });
+      } catch (e) {
+        list.innerHTML = '';
+        showToast('Suggestions unavailable: type the full address and tap Set end', { type: 'error' });
       }
-    });
-  }
+    }, 300);
+  });
   document.getElementById('end-go').addEventListener('click', () => {
     const q = input.value.trim();
     if (!q) { showToast('Type an address first', { type: 'error' }); return; }
-    new google.maps.Geocoder().geocode({ address: q }, (res, status) => {
-      if (status !== 'OK' || !res[0]) { showToast('Address not found', { type: 'error' }); return; }
-      const l = res[0].geometry.location;
-      rerouteWithEnd({ lat: l.lat(), lng: l.lng(), name: q });
-    });
+    geocode(q);
   });
   document.getElementById('end-here').addEventListener('click', () => {
     if (!navigator.geolocation) { showToast('Location unavailable', { type: 'error' }); return; }
@@ -618,6 +645,7 @@ function openEndPicker() {
       { enableHighAccuracy: true, timeout: 10000 });
   });
   input.focus();
+  setTimeout(() => input.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
 }
 
 function fmtTime(d) {

@@ -224,7 +224,6 @@ a.seg-btn { flex: none; min-width: 48px; min-height: 44px; padding: 0 14px; box-
 a.seg-btn.apple { background: #007aff; }
 #end-picker input { width: 100%; box-sizing: border-box; min-height: 48px; font-size: 16px; padding: 0 12px; border: 1px solid #c6d6f5; border-radius: 8px; }
 #end-picker .end-btns { display: flex; gap: 8px; }
-.pac-container { z-index: 10000; }
 #tour-overlay { position: fixed; inset: 0; z-index: 20000; background: transparent; }
 #tour-ring { position: fixed; z-index: 20001; display: none; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,.6); pointer-events: none; }
 #tour-card { position: fixed; z-index: 20002; left: 16px; right: 16px; max-width: 360px; margin: 0 auto; background: #fff; color: #222; border-radius: 12px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
@@ -235,3 +234,4 @@ a.seg-btn.apple { background: #007aff; }
 #tour-card .tour-next { background: var(--blue); color: #fff; }
 #tour-card .tour-skip { background: #eef3fd; color: var(--blue); }
 #tour-card .tour-count { color: #777; font-size: 13px; }
+#end-sugg button.pick-end { display: block; width: 100%; min-height: 44px; margin-top: 6px; text-align: left; padding: 8px 12px; background: #fff; border: 1px solid #c6d6f5; border-radius: 8px; font-size: 15px; color: #222; cursor: pointer; }

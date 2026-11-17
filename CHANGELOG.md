@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.16.1]
+- End point search uses Places API (New) (`AutocompleteSuggestion`) instead of the legacy widget; legacy Places is unavailable for new projects. Geocoder fallback kept.
+
 ## [0.16.0]
 - Google segment fix confirmed.
 - Apple multi-stop buttons labelled as an overview (Apple offers only Steps for multi-stop routes); Go pill and row Go use single-stop links that start navigation; tour text updated.
