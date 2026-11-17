@@ -124,7 +124,6 @@ function renderClusterSheet(map, clusters, eligibleCount) {
       '<div class="cs-row" data-i="' + i + '">' +
         '<button type="button" class="cs-pick">' +
           '<strong>' + c.count + ' stops</strong> · ' + c.spreadKm.toFixed(1) + ' km across' +
-          '<span class="cs-sub">' + escapeHtml(c.stops[0].name || c.stops[0].address || '') + '</span>' +
         '</button>' +
         '<button type="button" class="cs-go">Optimize</button>' +
       '</div>').join('');

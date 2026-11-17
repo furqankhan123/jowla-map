@@ -195,7 +195,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 ## Future improvements (backlog, collected 0.12.0)
 
-### From live-app usage (priority; fix first)
+### From live-app usage (DONE 0.13.0; owner must fill config.js syncUrl/syncToken after deploying Code.gs)
 1. **Cluster list: drop the name.** Suggested clusters should not show a stop/street name; show only count and spread (e.g. "12 stops · 0.3 km across"). (`cluster.js` / suggest sheet markup)
 2. **Google segment 1 missing.** With Google Maps as the preferred app only "Segment 2" shows. Likely the primary "Start in Google Maps" button is rendered in `#route-primary` (hidden/covered in the sheet body) while the body list skips index 0 (`prim.forEach` with `idx > 0`). Show segment 1 in the body too, or make the primary visible in every sheet state; verify with 1, 10 and 16+ stops.
 3. **Zero-setup for non-technical users.** The user will not have a sheet URL or token. Quick-log must work with one tap: bake `WRITE_URL` and the shared token into the deployment (token held in a config the owner sets once, not typed by the user), or move auth server-side (Apps Script restricted to the app's origin/user). Remove "Sheet sync" from the user-facing settings (keep an owner-only/advanced section); if sync is not configured, hide quick-log buttons rather than asking for setup.

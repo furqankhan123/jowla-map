@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0]
+- Marker popup: only Navigate (preferred app) and Visit Details.
+- Route end always defaults to the start; per-row "End here" re-optimizes so the route finishes at that stop, with a reset button. Old saved routes default to a round trip.
+- All Google/Apple segments listed in the sheet (segment 1 was missing).
+- Quick-log needs no user setup: `config.js` holds the URL/token; manual form only with `?admin=1`.
+- Cluster list no longer shows a name; filter/cluster close button enlarged.
+
 ## [0.12.0]
 - Route start/end: "Set as end" in the marker popup, end marker, round trip by default; total time and ETAs include the final leg; nav links end at the end point.
 - Route settings and Sheet sync styled as buttons.

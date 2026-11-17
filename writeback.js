@@ -12,10 +12,16 @@ const SYNC_TOKEN_KEY = 'jowla-sync-token';
 const QUEUE_KEY = 'jowla-write-queue';
 const QUICK_CODES = ['No Response', 'Left Message', 'Gave Targheeb'];
 
+// Owner sets these once in config.js; end users never see or type them.
+const CFG = window.JOWLA_CONFIG || {};
 function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-function syncConfigured() { return !!(lsGet(SYNC_URL_KEY) && lsGet(SYNC_TOKEN_KEY)); }
+function syncUrl() { return CFG.syncUrl || lsGet(SYNC_URL_KEY); }
+function syncToken() { return CFG.syncToken || lsGet(SYNC_TOKEN_KEY); }
+function syncConfigured() { return !!(syncUrl() && syncToken()); }
+// The manual URL/token form is for the owner only: open the app with ?admin=1.
+const SHOW_SYNC_SETTINGS = /[?&]admin=1/.test(location.search);
 
 function readQueue() {
   try { return JSON.parse(lsGet(QUEUE_KEY) || '[]'); } catch (e) { return []; }
@@ -37,11 +43,11 @@ async function flushQueue() {
       const item = q[0];
       let ok = false, fatal = false;
       try {
-        const res = await fetch(lsGet(SYNC_URL_KEY), {
+        const res = await fetch(syncUrl(), {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
-            token: lsGet(SYNC_TOKEN_KEY), rowid: item.rowid,
+            token: syncToken(), rowid: item.rowid,
             visitcode: item.visitcode, visitdate: item.visitdate
           })
         });
@@ -99,6 +105,7 @@ function renderQuickLog(container, stop) {
 }
 
 function syncSettingsHtml() {
+  if (!SHOW_SYNC_SETTINGS) return '';
   return `<details class="sync-box"><summary class="settings-btn"><span class="ic">⟳</span>Sheet sync<span class="chev">▾</span></summary>
     <label>Sync URL <input id="sync-url" type="url" placeholder="https://script.google.com/…/exec" value="${escapeHtml(lsGet(SYNC_URL_KEY))}"></label>
     <label>Sync token <input id="sync-token" type="password" autocomplete="off" value="${escapeHtml(lsGet(SYNC_TOKEN_KEY))}"></label>

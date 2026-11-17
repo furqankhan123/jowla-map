@@ -296,10 +296,7 @@ function createMarker(map, location, infowindow) {
       (location.comments ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +
       (location.visitdate ? '<p><strong>Last visit:</strong> ' + e(location.visitdate) + '</p>' : '') +
       '<a class="iw-btn" href="' + e(nb.primary.url) + '" target="_blank" rel="noopener">Navigate (' + nb.primary.label + ')</a>' +
-      '<a class="iw-btn alt" href="' + e(nb.other.url) + '" target="_blank" rel="noopener">Open in ' + nb.other.label + '</a>' +
       '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__pendingStart);}">Visit Details</a>' +
-      '<button type="button" class="iw-btn alt" onclick="if(window.setRouteStart){setRouteStart(window.__pendingStart);}return false;">Set as start</button>' +
-      '<button type="button" class="iw-btn alt" onclick="if(window.setRouteEnd){setRouteEnd(window.__pendingStart);}return false;">Set as end</button>' +
       '</div>');
     infowindow.open(map, marker);
   });

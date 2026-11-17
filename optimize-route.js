@@ -13,7 +13,7 @@ const ROUTE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_FIT_ITERATIONS = 3;
 
 // User-adjustable settings (persisted)
-const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, customEnd: null };
+const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null };
 try {
   Object.assign(opts, JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'));
 } catch (e) {}
@@ -30,7 +30,6 @@ const MAX_APPLE_STOPS = 15;
 let currentPolyline = null;
 let routeMarkers = [];
 let startMarker = null;
-let endMarker = null;
 let mapRef = null;
 
 /** Called from the marker info window "Set as start" link. */
@@ -47,35 +46,7 @@ function clearRouteStart() {
   drawStartMarker();
   refreshSettingsUi();
 }
-/** Called from the marker info window "Set as end" button. */
-function setRouteEnd(loc) {
-  if (!loc || !mapRef) return;
-  opts.customEnd = { lat: loc.latitude, lng: loc.longtitude, name: loc.name || loc.address || 'Custom end' };
-  saveOpts();
-  drawStartMarker();
-  refreshSettingsUi();
-}
-function clearRouteEnd() {
-  opts.customEnd = null;
-  saveOpts();
-  drawStartMarker();
-  refreshSettingsUi();
-}
 function drawStartMarker() {
-  if (endMarker) { endMarker.setMap(null); endMarker = null; }
-  if (opts.customEnd && mapRef) {
-    endMarker = new google.maps.Marker({
-      position: { lat: opts.customEnd.lat, lng: opts.customEnd.lng },
-      map: mapRef,
-      title: 'Route end: ' + opts.customEnd.name,
-      zIndex: 2000,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE, scale: 11,
-        fillColor: '#0b8043', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3
-      },
-      label: { text: 'E', color: '#fff', fontWeight: 'bold', fontSize: '12px' }
-    });
-  }
   if (startMarker) { startMarker.setMap(null); startMarker = null; }
   if (!opts.customStart || !mapRef) return;
   startMarker = new google.maps.Marker({
@@ -112,7 +83,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.12.0';
+const APP_VERSION = '0.13.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -264,7 +235,7 @@ async function runOptimization(map, start, bounds, source) {
     totalMins: result.totalMins,
     travelMode: result.travelMode,
     start: start,
-    end: opts.customEnd ? { lat: opts.customEnd.lat, lng: opts.customEnd.lng, name: opts.customEnd.name } : { lat: start.lat, lng: start.lng, name: opts.customStart ? opts.customStart.name : 'start', same: true },
+    end: { lat: start.lat, lng: start.lng, name: opts.customStart ? opts.customStart.name : 'start', same: true },
     encoded: result.encoded,
     savedAt: Date.now()
   };
@@ -272,10 +243,11 @@ async function runOptimization(map, start, bounds, source) {
   renderRoute(map, route);
 }
 
-async function requestRoute(start, candidates) {
+async function requestRoute(start, candidates, endStop) {
   const travelMode = isDenseCluster(candidates) ? 'WALK' : 'DRIVE';
   // The end is always a location (custom end, else back to the start), never a stop.
-  const endPt = opts.customEnd ? { lat: opts.customEnd.lat, lng: opts.customEnd.lng } : { lat: start.lat, lng: start.lng };
+  // The end is the start (round trip) unless a stop was chosen as the final stop.
+  const endPt = endStop ? { lat: endStop.latitude, lng: endStop.longtitude } : { lat: start.lat, lng: start.lng };
   const intermediates = candidates;
 
   const body = {
@@ -312,6 +284,7 @@ async function requestRoute(start, candidates) {
 
     const order = route.optimizedIntermediateWaypointIndex || intermediates.map((_, i) => i);
     const ordered = order.map(i => intermediates[i]);
+    if (endStop) ordered.push(endStop);
 
     const durationSecs = parseInt(route.duration || '0', 10);
     const legSecs = (route.legs || []).map(l => parseInt(l.duration || '0', 10));
@@ -329,6 +302,36 @@ async function requestRoute(start, candidates) {
 }
 
 let currentRoute = null;
+/** Re-optimize the current stops so the route ends at stop `idx` (null = back to start). */
+async function rerouteWithEnd(idx) {
+  if (optimizing || !currentRoute) return;
+  const old = currentRoute;
+  const stops = old.stops.slice();
+  let endStop = null;
+  if (idx != null) endStop = stops.splice(idx, 1)[0];
+  if (!stops.length) return;
+  setBusy(true);
+  try {
+    const cands = stops.map((x) => ({ ...x, dist: haversine(old.start, { lat: x.latitude, lng: x.longtitude }) }));
+    const r = await requestRoute(old.start, cands, endStop);
+    if (!r) return;
+    const strip = (x) => ({
+      name: x.name, address: x.address, latitude: x.latitude, longtitude: x.longtitude,
+      db: x.db, rowid: x.rowid, sts: x.sts, done: !!(old.stops.find((o) => sameStop(o, x)) || {}).done
+    });
+    const route = {
+      stops: r.ordered.map(strip), legSecs: r.legSecs, totalMins: r.totalMins, travelMode: r.travelMode,
+      start: old.start, encoded: r.encoded, savedAt: Date.now(),
+      end: endStop
+        ? { lat: endStop.latitude, lng: endStop.longtitude, name: endStop.name || 'stop', isStop: true }
+        : { lat: old.start.lat, lng: old.start.lng, name: opts.customStart ? opts.customStart.name : 'start', same: true }
+    };
+    persistRouteObj(route);
+    renderRoute(mapRef, route);
+    showToast(endStop ? 'Route now ends at ' + (endStop.name || 'that stop') : 'Route returns to start');
+  } finally { setBusy(false); }
+}
+function persistRouteObj(route) { try { localStorage.setItem(ROUTE_KEY, JSON.stringify(route)); } catch (e) {} }
 function persistRoute() {
   try { localStorage.setItem(ROUTE_KEY, JSON.stringify(currentRoute)); } catch (e) {}
 }
@@ -625,9 +628,6 @@ function refreshSettingsUi() {
       <label>Skip visited within ${sel('opt-days', opts.recentDays, [[30, '30 days'], [90, '90 days'], [180, '180 days']])}</label>
       <label class="chk"><input type="checkbox" id="opt-recent"${opts.includeRecent ? ' checked' : ''}> Include recently visited</label>
       <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
-      <div class="start-row">End: ${opts.customEnd
-        ? `<b>${escapeHtml(opts.customEnd.name)}</b> <a href="#" id="opt-clear-end">clear</a>`
-        : 'Same as start (tap a pin → “Set as end”)'}</div>
       <div class="start-row">Start: ${opts.customStart
         ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
         : 'GPS (or tap a pin → “Set as start”)'}</div>
@@ -647,8 +647,6 @@ function refreshSettingsUi() {
   rerun.disabled = optimizing;
   rerun.addEventListener('click', () => optimizeCurrentView(mapRef));
   const clr = document.getElementById('opt-clear-start');
-  const clrE = document.getElementById('opt-clear-end');
-  if (clrE) clrE.addEventListener('click', (e) => { e.preventDefault(); clearRouteEnd(); });
   if (clr) clr.addEventListener('click', (e) => { e.preventDefault(); clearRouteStart(); });
   if (window.bindSyncSettings) bindSyncSettings();
 }
@@ -663,7 +661,8 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
   const body = document.getElementById('route-results');
   const e = escapeHtml;
 
-  const endStop = end ? { latitude: end.lat, longtitude: end.lng, name: end.name } : null;
+  if (!end && start) end = { lat: start.lat, lng: start.lng, name: 'start', same: true };
+  const endStop = end && !end.isStop ? { latitude: end.lat, longtitude: end.lng, name: end.name } : null;
   let endEta = '';
   if (endStop && legSecs && legSecs.length > orderedStops.length) {
     const tEnd = Date.now() + (legSecs.reduce((a, b) => a + b, 0) + orderedStops.length * AVG_VISIT_MINS * 60) * 1000;
@@ -704,6 +703,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
     html += `<li class="stop-row" data-i="${i}"><button type="button" class="done-btn" aria-label="Mark done">○</button><span class="num">${i + 1}</span>` +
       `<span class="nm">${eta}${e(s.name || s.address || 'Stop')}</span>` +
       (detailsUrl ? `<a class="go visit" href="${e(detailsUrl)}" target="_blank" rel="noopener">Visit</a>` : '') +
+      (i < orderedStops.length - 1 || (end && !end.isStop) ? `<button type="button" class="go end-btn" data-end="${i}" title="Finish the route at this stop">End here</button>` : '') +
       `<a class="go" href="${e(nb.primary.url)}" target="_blank" rel="noopener">Go</a>` +
       `<a class="go alt" href="${e(nb.other.url)}" target="_blank" rel="noopener" title="Open in ${nb.other.label}">${nb.other.app === 'apple' ? 'Apple' : 'Google'}</a></li>`;
     t += AVG_VISIT_MINS * 60 * 1000; // time spent at this stop
@@ -716,15 +716,17 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
       `<a class="go" href="${e(nbE.primary.url)}" target="_blank" rel="noopener">Go</a></li>`;
   }
   html += `</ol>`;
+  if (end && end.isStop) html += `<button type="button" class="nav-btn reset-end">Reset: return to start</button>`;
 
   // Remaining navigation options: later segments of the preferred app, then every segment of the other app
-  prim.forEach((seg, idx) => { if (idx > 0) html += segBtn(seg, pref, segLabel(pref, idx)); });
+  if (prim.length > 1) prim.forEach((seg, idx) => { html += segBtn(seg, pref, segLabel(pref, idx)); });
   segsFor(otherApp).forEach((seg, idx) => html += segBtn(seg, otherApp, 'Open in ' + segLabel(otherApp, idx)));
 
   body.innerHTML = html;
   body.querySelectorAll('.stop-row:not(.end-row)').forEach((row) => {
     row.addEventListener('click', (ev) => {
       const s = orderedStops[+row.dataset.i];
+      if (ev.target.closest('.end-btn')) { rerouteWithEnd(+ev.target.closest('.end-btn').dataset.end); return; }
       if (ev.target.closest('a.visit')) { markStopDone(s); return; }
       if (ev.target.closest('a')) return;
       if (ev.target.closest('.done-btn')) {
@@ -736,6 +738,9 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
       if (mapRef && s) { mapRef.panTo({ lat: s.latitude, lng: s.longtitude }); mapRef.setZoom(18); }
     });
   });
+
+  const rst = body.querySelector('.reset-end');
+  if (rst) rst.addEventListener('click', () => rerouteWithEnd(null));
 
   panel.classList.remove('minimized');
   panel.classList.add('visible');
@@ -756,4 +761,3 @@ window.clearRoute = function () {
 };
 window.addOptimizeControl = addOptimizeControl;
 window.setRouteStart = setRouteStart;
-window.setRouteEnd = setRouteEnd;
