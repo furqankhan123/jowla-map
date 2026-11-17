@@ -193,6 +193,29 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 **Recommended order next:** E/C (Apple Maps) -> F (start/end/total time; affects routing and fit-to-time) -> D (settings buttons, markup/CSS only) -> phone verification pass -> suggestions 1, 3, 5 -> step 7 only after F provides per-leg modes.
 
+## Future improvements (backlog, collected 0.12.0)
+
+### From live-app usage (priority; fix first)
+1. **Cluster list: drop the name.** Suggested clusters should not show a stop/street name; show only count and spread (e.g. "12 stops · 0.3 km across"). (`cluster.js` / suggest sheet markup)
+2. **Google segment 1 missing.** With Google Maps as the preferred app only "Segment 2" shows. Likely the primary "Start in Google Maps" button is rendered in `#route-primary` (hidden/covered in the sheet body) while the body list skips index 0 (`prim.forEach` with `idx > 0`). Show segment 1 in the body too, or make the primary visible in every sheet state; verify with 1, 10 and 16+ stops.
+3. **Zero-setup for non-technical users.** The user will not have a sheet URL or token. Quick-log must work with one tap: bake `WRITE_URL` and the shared token into the deployment (token held in a config the owner sets once, not typed by the user), or move auth server-side (Apps Script restricted to the app's origin/user). Remove "Sheet sync" from the user-facing settings (keep an owner-only/advanced section); if sync is not configured, hide quick-log buttons rather than asking for setup.
+4. **Round trip end is not honoured in Apple Maps.** With the default end (= start) Apple launches with the last visited stop as its final destination. The Apple/Google links must append the end point (start for a round trip) as the final destination; check `buildAppleMapsSegments` receives `navStops` and that `route.end` exists for routes persisted before 0.12.0 (old routes have no `end`, so they fall back to the last stop). Also confirm per-row "Go" and the Next pill are unaffected.
+5. **Marker popup clutter.** Keep only "Navigate" (opens Google Maps by default, or Apple Maps if chosen in settings) and "Visit Details". Remove "Open in other app", "Set as start" and "Set as end" from the popup.
+6. **End defaults to start.** Default end = start point (round trip) everywhere, including after clearing. No end picker in the popup (see 7).
+7. **Set a different end from the ordered list.** Remove "Set as start/end" from the popup; add a per-row control in the route sheet ("Set as end") that makes that stop (or a chosen stop) the route end and re-optimizes/recomputes, with a "Reset to start" action. The end stop is then excluded from the visit list or shown as the final row.
+8. **Filter sheet close "×" too small.** Make the in-map filter close button at least 44x44px with a larger glyph (`#fs-close` in `map.css`).
+
+### From the session handoff
+- **Quick-log Undo:** Undo only un-marks locally; the sheet write stays. Either drop Undo for quick-log or queue an undo write restoring the previous code/date.
+- **Apps Script hardening:** test on a copy of the sheet; keep `ALLOWED_CODES` (Code.gs) in sync with `QUICK_CODES` (writeback.js); the token is the only protection, rotate if leaked.
+- **Performance at ~45k rows:** `applyFilters` recreates every marker; use marker clustering or viewport-only rendering; debounce the filter name input.
+- **PWA polish:** replace placeholder icons; one source of truth for version (`APP_VERSION`, `CACHE_VERSION`, `?v=`); offline route list rendered from localStorage before Maps loads.
+- **Cluster empty state:** mention an active filter in the empty-state text.
+- **README:** fill from this file once the above land.
+- **Saved places** for start/end (F option not built).
+- **Step 7:** walk/drive path coloring, only once per-leg modes exist.
+- **Phone verification pass:** walk the Verify lists for A, B, steps 3-6, C/E, D and F on a real phone (none verified yet).
+
 ## Suggested workflow once live
 1. Open the map and tap **Optimize** (or set a custom start first).
 2. Tap **Go: N. Name** and follow the route.
