@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.10.0]
+### Added
+- Quick log: No Response / Left Message / Gave Targheeb buttons under the next stop write the visit code and date to the sheet (shortcut beside Visit Details). Offline writes are queued and retried.
+- Apps Script endpoint source in `apps-script/Code.gs`; URL and token entered under Route settings > Sheet sync.
+
 ## [0.9.0]
 ### Added
 - Cluster suggestions: the ✦ button lists the densest groups of eligible stops in view; tap to highlight, or Optimize to route just that cluster.

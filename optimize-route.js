@@ -83,7 +83,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.9.0';
+const APP_VERSION = '0.10.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -355,6 +355,7 @@ function updateDoneUi() {
     (vUrl ? `<a class="nav-btn log" id="log-visit" href="${escapeHtml(vUrl)}" target="_blank" rel="noopener">Log visit ✓</a>` : '');
   const log = document.getElementById('log-visit');
   if (log) log.addEventListener('click', () => markStopDone(next));
+  if (window.renderQuickLog) renderQuickLog(el, next);
 }
 
 function renderRoute(map, route) {
@@ -594,6 +595,7 @@ function refreshSettingsUi() {
         ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
         : 'GPS (or tap a pin → “Set as start”)'}</div>
       <button id="opt-rerun" type="button" class="nav-btn primary">Optimize</button>
+      ${window.syncSettingsHtml ? syncSettingsHtml() : ''}
       <div class="version">v${APP_VERSION}</div>
     </div>`;
 
@@ -605,6 +607,7 @@ function refreshSettingsUi() {
   rerun.addEventListener('click', () => optimizeCurrentView(mapRef));
   const clr = document.getElementById('opt-clear-start');
   if (clr) clr.addEventListener('click', (e) => { e.preventDefault(); clearRouteStart(); });
+  if (window.bindSyncSettings) bindSyncSettings();
 }
 
 function fmtTime(d) {

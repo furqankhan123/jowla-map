@@ -188,3 +188,13 @@ body.sheet-expanded #fab-group { display: none; }
 .cs-pick .cs-sub { display: block; color: #555; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cs-go { flex: none; min-width: 96px; border: none; border-radius: 8px; background: var(--blue); color: #fff; font-size: 15px; font-weight: bold; cursor: pointer; }
 .cs-empty { padding: 16px 0; color: #555; }
+
+/* Quick log chips + sync settings */
+#route-primary { flex-wrap: wrap; }
+.quick-row { flex: 1 0 100%; display: flex; gap: 6px; }
+.quick-chip { flex: 1; min-height: 44px; border: 1px solid var(--blue); background: #fff; color: var(--blue); border-radius: 22px; font-size: 14px; font-weight: bold; cursor: pointer; }
+.quick-chip:active { background: #eef3fd; }
+.sync-box { margin-top: 8px; }
+.sync-box summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.sync-box label { display: block; margin-top: 6px; font-size: 14px; }
+.sync-box input { display: block; width: 100%; height: 44px; margin-top: 4px; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
