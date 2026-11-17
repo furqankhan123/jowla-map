@@ -135,16 +135,16 @@ Not built until routing supports mixed modes (currently one `travelMode` per rou
 
 ## Bug fixes (from phone screenshot)
 
-### A. Optimize FAB hides another button behind it
+### A. Optimize FAB hides another button behind it  [DONE 8bcccf0]
 - **Symptom:** on mobile a second dark pill peeks out from behind/below-right of the Optimize pill; it can't be tapped. Likely the Done/Next ("Go: N") pill or sheet peek bar sitting at the same bottom-right position as `#fab-group` (`map.css` `#fab-group`, bottom = `--sheet-peek` + 16px), so they overlap whenever a route is active.
 - **Fix:** put every floating button in the single `#fab-group` flex column (locate, Next/Go, Optimize) so they stack with a 12px gap instead of absolutely overlapping; remove any separate fixed-position copy. If the Next pill must stay separate, give it its own slot (e.g. above Locate) and raise `#fab-group` `bottom` by its height via a CSS variable set when it shows. Hide Optimize's duplicate while a route sheet is open if redundant.
 - **Verify:** at 390px width with and without a route: no overlap, all buttons tappable, nothing clipped by the sheet peek.
 
-### B. Marker popup has blank space at the top
+### B. Marker popup has blank space at the top  [DONE 8bcccf0]
 - **Cause:** Google's InfoWindow reserves a header row (`.gm-style-iw-ch`) for the close button; our content sits below it, and the dark theme makes it a visible empty band.
 - **Fix:** create the window with `headerDisabled: true` in `map.js` (both `new google.maps.InfoWindow` calls, lines ~88 and ~168) and add our own close "×" inside `.iw` (top-right, 44px target) that calls `infowindow.close()`. Fallback CSS: `.gm-style-iw-ch { padding-top: 0; min-height: 0; }` and trim `.gm-style-iw-d` top padding.
 - **Verify:** tap a marker: card starts directly with the name, close button works, tall content still scrolls, dark and light themes.
-### C. Restore the Apple Maps option (all platforms, no iOS detection)
+### C. Restore the Apple Maps option (all platforms, no iOS detection)  [OPEN]
 - **Symptom:** the marker popup "Navigate" in `map.js` (~line 197) is Google-only. Apple support survives only in `optimize-route.js` (`buildAppleMapsUrl`, primary/"Open full route" buttons, per-row "Go"), and it is gated on `isIOS`. The sheet's Apple primary also silently falls back to Google above `MAX_APPLE_STOPS` = 15 stops.
 - **Spec:**
   1. Remove `isIOS` entirely (`optimize-route.js` ~line 472 and every use). Apple Maps links (`https://maps.apple.com/...`) work in any browser: they open the Maps app on Apple devices and Apple Maps on the web elsewhere, so always offer both apps.
@@ -154,6 +154,45 @@ Not built until routing supports mixed modes (currently one `travelMode` per rou
   5. Route sheet: show both Google and Apple buttons for everyone. When more than 15 stops, split Apple into 15-stop segments like `buildGoogleMapsSegments` ("Apple Maps – Segment N") instead of dropping it.
 - **Files:** map.js, optimize-route.js, map.css (secondary button style), settings markup in newindex.html.
 - **Verify:** on iPhone, Android and desktop the popup, Next pill, row Go and sheet all show both apps; the preference flips which is primary; 16+ stops yields multiple Apple segments; no reference to `isIOS` remains.
+### D. Settings controls should look like buttons  [OPEN]
+- **Problem:** "Route settings" and "Sync sheet" in the route sheet are bare `<summary>` / text links (`optimize-route.js` ~line 517, sync settings bound by `bindSyncSettings`), so users don't realize they can be tapped.
+- **Fix:** style both as real buttons: `.settings-btn` with the `.iw-btn.alt` look (light-blue fill, blue bold text, 1px border, 8px radius, min-height 44px, full-width or side by side), a leading icon (gear / refresh) and a trailing chevron that rotates when open. Keep `<details>`/`<summary>` for accessibility but apply the button styles to `summary` and remove the default disclosure marker; add `:active` and `:focus-visible` states.
+- **Files:** map.css, optimize-route.js (markup/classes), sync settings markup.
+- **Verify:** both controls read as buttons at 390px, 44px tap targets, open/close works, keyboard focus visible.
+
+### E. Implement the Apple Maps change  [OPEN, do first next session]
+Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, "Preferred maps app" setting, popup second button, both apps in the sheet, 15-stop Apple segments). Steps 3-6 are now done, so this is the next code task.
+
+### F. Start and end locations in the route and total time  [OPEN]
+- **Goal:** the user's day starts and ends at a known place (home, office, car). Total time must include getting from the start to the first stop and from the last stop to the end, and the end can differ from the start.
+- **Options (Route settings):** "Start" = GPS (default) / custom point (existing marker "Set as start") / saved place; "End" = Same as start (default) / Different location. "Different location" is set by the same marker-popup action ("Set as end", next to "Set as start") or by a saved place; shown as a green flag marker, with "clear" like start. Persist in `opts` and localStorage with the route.
+- **Routing:** in `requestRoute` (`optimize-route.js` ~245) when an end is set, use it as `destination` and make all candidates intermediates with `optimizeWaypointOrder`; for "same as start" the destination equals the origin (round trip). The old last-candidate-as-destination behavior is removed: the end is always a location, never a stop. The final leg adds an entry to `legSecs`.
+- **Total time:** `totalMins` = all legs including the return/end leg + `AVG_VISIT_MINS` per stop (not for the end point). Fit-to-time (`targetMins` loop, ~line 223) uses this full total, so stops are dropped until start-to-end fits. Summary shows e.g. "12 stops · ~58 min · ends at Home 4:42 PM".
+- **UI:** the end point appears as a final row in the stop list (no Visit/Done buttons) with its ETA. Google/Apple navigation URLs use the chosen end as `destination` (Apple/Google segments: final segment ends at the end point).
+- **Edge cases:** end equals start with one stop; end unreachable by mode; Routes API waypoint cap (25 intermediates) still applies.
+- **Verify:** same-start/end round trip adds the return time; different end changes the order and total; fit-to-time respects it; clearing the end returns to same-as-start; persisted route restores the end.
+## Session handoff (state at 494014a, v0.10.0, pushed to origin/main)
+
+**Done:** steps 1-6 (mobile-first, done/next, in-map filters, PWA, quick-log write-back, cluster suggestions) and bugs A and B. **Step 5 is code-complete but inert** until the owner deploys `apps-script/Code.gs` and enters the URL and token under Route settings > Sheet sync. **Open:** C/E (Apple Maps), D (settings as buttons), F (start/end + total time), step 7 (deferred), and the offline route list without the map.
+
+**Nothing from this session has been verified on a real phone.** Only `node --check`, a Node unit check of `findClusters`, and reading live sheet data were done. First task next session: run the app on a phone (or DevTools at 390px) and walk the Verify lists for A, B, step 3 (filters), step 4 (install/offline), step 5 (against a copy of the sheet) and step 6 (clusters).
+
+**Facts learned from the live sheet (use these, don't re-derive):**
+- Visit codes in use: `No Response`, `Left Message`, `Gave Targheeb` (plus `Do Not Visit` and `[auto] comment update`; many address strings also sit in the visitcode column, so treat unknown codes as noise).
+- Date format: `October 25, 2026` (long month, day, year). `sheetDate()` in `writeback.js` and the regex in the Apps Script rely on it.
+- `rowid` (column V) is the sheet row number; about 45,400 rows load into the page. The Sheets API key is HTTP-referrer restricted (direct curl returns 403), which is correct.
+
+**Suggestions / follow-ups (not planned above):**
+1. **Quick-log Undo:** the Undo toast only un-marks the stop; the sheet write stays. Either drop Undo for quick-log, or add an undo write restoring the previous code/date (store them in the queue item).
+2. **Apps Script hardening:** test on a copy of the sheet first; keep `ALLOWED_CODES` (Code.gs) in sync with `QUICK_CODES` (writeback.js); the endpoint is public by URL so the token is the only protection, rotate it if leaked.
+3. **Performance at ~45k rows:** `applyFilters` recreates every marker; consider marker clustering or rendering only markers in the viewport, and debounce the filter-sheet name input (it recounts all rows per keystroke).
+4. **PWA polish:** icons are generated placeholders (replace with real artwork); bump `CACHE_VERSION` in `sw.js` with every release alongside `APP_VERSION` and the `?v=` strings (one source of truth would stop drift); add the offline route list (render `ensurePanel`/`showRoutePanel` from localStorage before Maps loads).
+5. **Repo hygiene:** add `.playwright-mcp/` and `.mcp.json` to `.gitignore`; add a `.gitattributes` with `* text=auto` to stop the LF/CRLF warnings; remove the unused `infoWindow = new google.maps.InfoWindow` near the top of `initialiseMap` in map.js.
+6. **Cluster empty state:** Suggest uses `window.visibleLocations`, so filters apply; mention in the empty-state text when a filter is active.
+7. **README:** still to be filled from this file (workflow section) once C-F land.
+
+**Recommended order next:** E/C (Apple Maps) -> F (start/end/total time; affects routing and fit-to-time) -> D (settings buttons, markup/CSS only) -> phone verification pass -> suggestions 1, 3, 5 -> step 7 only after F provides per-leg modes.
+
 ## Suggested workflow once live
 1. Open the map and tap **Optimize** (or set a custom start first).
 2. Tap **Go: N. Name** and follow the route.
