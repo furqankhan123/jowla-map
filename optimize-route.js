@@ -83,7 +83,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.10.0';
+const APP_VERSION = '0.11.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -303,9 +303,7 @@ function persistRoute() {
   try { localStorage.setItem(ROUTE_KEY, JSON.stringify(currentRoute)); } catch (e) {}
 }
 function nextStopUrl(s) {
-  return isIOS
-    ? `https://maps.apple.com/?daddr=${s.latitude},${s.longtitude}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${s.latitude},${s.longtitude}`;
+  return navButtons(s.latitude, s.longtitude).primary.url;
 }
 function sameStop(a, b) {
   if (a.rowid != null && b.rowid != null) return String(a.rowid) === String(b.rowid) && String(a.db) === String(b.db);
@@ -351,7 +349,7 @@ function updateDoneUi() {
   if (!next) { el.innerHTML = '<div class="meta">All stops done 🎉</div>'; return; }
   const n = stops.indexOf(next) + 1;
   const vUrl = window.visitDetailsUrl ? visitDetailsUrl(next) : '';
-  el.innerHTML = `<a class="nav-btn${isIOS ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Go: ${n}. ${escapeHtml(next.name || next.address || 'Stop')}</a>` +
+  el.innerHTML = `<a class="nav-btn${navButtons(next.latitude, next.longtitude).primary.app === 'apple' ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Go: ${n}. ${escapeHtml(next.name || next.address || 'Stop')}</a>` +
     (vUrl ? `<a class="nav-btn log" id="log-visit" href="${escapeHtml(vUrl)}" target="_blank" rel="noopener">Log visit ✓</a>` : '');
   const log = document.getElementById('log-visit');
   if (log) log.addEventListener('click', () => markStopDone(next));
@@ -453,26 +451,31 @@ function buildGoogleMapsSegments(orderedStops, start, modeText) {
 }
 
 /**
- * Build a single Apple Maps multi-stop URL (unified scheme).
- * Falls back gracefully if too many stops.
+ * Build Apple Maps multi-stop URLs, split into segments of at most MAX_APPLE_STOPS
+ * stops (segments overlap at the end point, like the Google ones).
  */
-function buildAppleMapsUrl(orderedStops, start, modeText) {
-  if (!orderedStops.length) return null;
-  if (orderedStops.length > MAX_APPLE_STOPS) return null;
-
+function buildAppleMapsSegments(orderedStops, start, modeText) {
+  const segments = [];
+  if (!orderedStops.length) return segments;
   const mode = modeText === 'walking' ? 'walking' : 'driving';
-  const dest = orderedStops[orderedStops.length - 1];
-  const intermediates = orderedStops.slice(0, -1);
-
-  let url = `https://maps.apple.com/directions?source=${start.lat},${start.lng}&destination=${dest.latitude},${dest.longtitude}&mode=${mode}`;
-  intermediates.forEach(s => {
-    url += `&waypoint=${s.latitude},${s.longtitude}`;
-  });
-  return url;
+  let origin = start;
+  let remaining = orderedStops.slice();
+  while (remaining.length > 0) {
+    const chunk = remaining.slice(0, Math.min(remaining.length, MAX_APPLE_STOPS));
+    const dest = chunk[chunk.length - 1];
+    let url = `https://maps.apple.com/directions?source=${origin.lat},${origin.lng}&destination=${dest.latitude},${dest.longtitude}&mode=${mode}`;
+    chunk.slice(0, -1).forEach(s => { url += `&waypoint=${s.latitude},${s.longtitude}`; });
+    segments.push({
+      url,
+      label: `Stops ${orderedStops.indexOf(chunk[0]) + 1}–${orderedStops.indexOf(dest) + 1}`
+    });
+    origin = { lat: dest.latitude, lng: dest.longtitude };
+    remaining = remaining.slice(chunk.length - 1);
+    if (remaining.length <= 1) break;
+  }
+  return segments;
 }
 
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const SHEET_STATES = ['peek', 'half', 'full'];
 
 function setSheet(state) {
@@ -591,6 +594,7 @@ function refreshSettingsUi() {
       <label>Target time ${sel('opt-target', opts.targetMins, [[30, '30 min'], [45, '45 min'], [60, '60 min'], [0, 'No limit']])}</label>
       <label>Skip visited within ${sel('opt-days', opts.recentDays, [[30, '30 days'], [90, '90 days'], [180, '180 days']])}</label>
       <label class="chk"><input type="checkbox" id="opt-recent"${opts.includeRecent ? ' checked' : ''}> Include recently visited</label>
+      <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
       <div class="start-row">Start: ${opts.customStart
         ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
         : 'GPS (or tap a pin → “Set as start”)'}</div>
@@ -602,6 +606,10 @@ function refreshSettingsUi() {
   document.getElementById('opt-target').addEventListener('change', (e) => { opts.targetMins = parseInt(e.target.value, 10); saveOpts(); });
   document.getElementById('opt-days').addEventListener('change', (e) => { opts.recentDays = parseInt(e.target.value, 10); saveOpts(); });
   document.getElementById('opt-recent').addEventListener('change', (e) => { opts.includeRecent = e.target.checked; saveOpts(); });
+  document.getElementById('opt-nav').addEventListener('change', (e) => {
+    setNavPref(e.target.value);
+    if (currentRoute) { showRoutePanel(currentRoute.stops, currentRoute.totalMins, currentRoute.travelMode, currentRoute.start, currentRoute.legSecs); }
+  });
   const rerun = document.getElementById('opt-rerun');
   rerun.disabled = optimizing;
   rerun.addEventListener('click', () => optimizeCurrentView(mapRef));
@@ -623,17 +631,24 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
   document.getElementById('route-summary').textContent =
     `${orderedStops.length} stops · ~${totalMins} min · ${modeText}`;
 
-  const appleUrl = buildAppleMapsUrl(orderedStops, start, modeText);
-  const segments = buildGoogleMapsSegments(orderedStops, start, modeText);
-  const googleBtn = (seg, label) => `<a class="nav-btn" href="${e(seg.url)}" target="_blank" rel="noopener">${e(label)}</a>`;
-  const appleBtn = (label) => `<a class="nav-btn apple" href="${e(appleUrl)}" target="_blank" rel="noopener">${label}</a>`;
-  const seg1Label = segments.length > 1 ? `(${segments[0] && segments[0].label})` : '';
+  const googleSegs = buildGoogleMapsSegments(orderedStops, start, modeText);
+  const appleSegs = buildAppleMapsSegments(orderedStops, start, modeText);
+  const segBtn = (seg, app, label) =>
+    `<a class="nav-btn${app === 'apple' ? ' apple' : ''}" href="${e(seg.url)}" target="_blank" rel="noopener">${e(label)}</a>`;
+  const appName = (app) => (app === 'apple' ? 'Apple Maps' : 'Google Maps');
+  const segsFor = (app) => (app === 'apple' ? appleSegs : googleSegs);
+  const pref = navPref();
+  const otherApp = pref === 'apple' ? 'google' : 'apple';
+  const segLabel = (app, idx) => {
+    const segs = segsFor(app);
+    return segs.length > 1 ? `${appName(app)} – Segment ${idx + 1} (${segs[idx].label})` : `${appName(app)}`;
+  };
 
-  // One primary navigation button, always visible in peek.
-  let primary = '';
-  if (isIOS && appleUrl) primary = appleBtn('Start in Apple Maps');
-  else if (segments.length) primary = googleBtn(segments[0], ('Start in Google Maps ' + seg1Label).trim());
-  document.getElementById('route-primary').innerHTML = primary;
+  // One primary navigation button (preferred app, first segment), always visible in peek.
+  const prim = segsFor(pref);
+  document.getElementById('route-primary').innerHTML = prim.length
+    ? segBtn(prim[0], pref, 'Start in ' + appName(pref) + (prim.length > 1 ? ` (${prim[0].label})` : ''))
+    : '';
 
   const startsAt = opts.customStart ? 'custom start' : 'GPS';
   let html = `<div class="meta">From filtered map view &middot; starts at ${startsAt}</div><ol>`;
@@ -641,25 +656,20 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs) {
   orderedStops.forEach((s, i) => {
     t += ((legSecs && legSecs[i]) || 0) * 1000; // travel to this stop
     const eta = legSecs && legSecs.length ? `<span class="eta">${fmtTime(new Date(t))}</span>` : '';
-    const goUrl = isIOS
-      ? `https://maps.apple.com/?daddr=${s.latitude},${s.longtitude}`
-      : `https://www.google.com/maps/dir/?api=1&destination=${s.latitude},${s.longtitude}`;
+    const nb = navButtons(s.latitude, s.longtitude);
     const detailsUrl = visitDetailsUrl(s);
     html += `<li class="stop-row" data-i="${i}"><button type="button" class="done-btn" aria-label="Mark done">○</button><span class="num">${i + 1}</span>` +
       `<span class="nm">${eta}${e(s.name || s.address || 'Stop')}</span>` +
       (detailsUrl ? `<a class="go visit" href="${e(detailsUrl)}" target="_blank" rel="noopener">Visit</a>` : '') +
-      `<a class="go" href="${e(goUrl)}" target="_blank" rel="noopener">Go</a></li>`;
+      `<a class="go" href="${e(nb.primary.url)}" target="_blank" rel="noopener">Go</a>` +
+      `<a class="go alt" href="${e(nb.other.url)}" target="_blank" rel="noopener" title="Open in ${nb.other.label}">${nb.other.app === 'apple' ? 'Apple' : 'Google'}</a></li>`;
     t += AVG_VISIT_MINS * 60 * 1000; // time spent at this stop
   });
   html += `</ol>`;
 
-  // Remaining navigation options (primary button covers the first one)
-  if (appleUrl && !isIOS) html += appleBtn('Open full route in Apple Maps');
-  if (isIOS && segments.length) html += googleBtn(segments[0], ('Google Maps ' + seg1Label).trim());
-  segments.forEach((seg, idx) => {
-    if (idx === 0) return;
-    html += googleBtn(seg, `Google Maps – Segment ${idx + 1} (${seg.label})`);
-  });
+  // Remaining navigation options: later segments of the preferred app, then every segment of the other app
+  prim.forEach((seg, idx) => { if (idx > 0) html += segBtn(seg, pref, segLabel(pref, idx)); });
+  segsFor(otherApp).forEach((seg, idx) => html += segBtn(seg, otherApp, 'Open in ' + segLabel(otherApp, idx)));
 
   body.innerHTML = html;
   body.querySelectorAll('.stop-row').forEach((row) => {

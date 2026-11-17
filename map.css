@@ -198,3 +198,4 @@ body.sheet-expanded #fab-group { display: none; }
 .sync-box summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
 .sync-box label { display: block; margin-top: 6px; font-size: 14px; }
 .sync-box input { display: block; width: 100%; height: 44px; margin-top: 4px; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
+.stop-row a.go.alt { font-weight: normal; font-size: 12px; padding: 12px 4px; color: #777; }

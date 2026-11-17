@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.11.0]
+- Apple Maps restored on all platforms: shared `nav.js` (`navLinks`), "Preferred maps app" setting, popup and route rows show both apps, Apple routes split into 15-stop segments; `isIOS` removed.
+
 ## [0.10.0]
 ### Added
 - Quick log: No Response / Left Message / Gave Targheeb buttons under the next stop write the visit code and date to the sheet (shortcut beside Visit Details). Offline writes are queued and retried.

@@ -288,8 +288,7 @@ function createMarker(map, location, infowindow) {
   google.maps.event.addListener(marker, 'click', function() {
     window.__pendingStart = location;
     var e = escapeHtml;
-    var dest = location.latitude + ',' + location.longtitude;
-    var navUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(dest);
+    var nb = navButtons(location.latitude, location.longtitude);
     var detailsUrl = visitDetailsUrl(location);
     infowindow.setContent('<div class="iw">' +
       '<button type="button" class="iw-close" aria-label="Close" onclick="window.__iw && window.__iw.close()">&times;</button>' +
@@ -297,7 +296,8 @@ function createMarker(map, location, infowindow) {
       (location.address ? '<p>' + e(location.address) + '</p>' : '') +
       (location.comments ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +
       (location.visitdate ? '<p><strong>Last visit:</strong> ' + e(location.visitdate) + '</p>' : '') +
-      '<a class="iw-btn" href="' + e(navUrl) + '" target="_blank" rel="noopener">Navigate</a>' +
+      '<a class="iw-btn" href="' + e(nb.primary.url) + '" target="_blank" rel="noopener">Navigate (' + nb.primary.label + ')</a>' +
+      '<a class="iw-btn alt" href="' + e(nb.other.url) + '" target="_blank" rel="noopener">Open in ' + nb.other.label + '</a>' +
       '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__pendingStart);}">Visit Details</a>' +
       '<button type="button" class="iw-btn alt" onclick="if(window.setRouteStart){setRouteStart(window.__pendingStart);}return false;">Set as start</button>' +
       '</div>');

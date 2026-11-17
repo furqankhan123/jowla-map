@@ -144,7 +144,7 @@ Not built until routing supports mixed modes (currently one `travelMode` per rou
 - **Cause:** Google's InfoWindow reserves a header row (`.gm-style-iw-ch`) for the close button; our content sits below it, and the dark theme makes it a visible empty band.
 - **Fix:** create the window with `headerDisabled: true` in `map.js` (both `new google.maps.InfoWindow` calls, lines ~88 and ~168) and add our own close "×" inside `.iw` (top-right, 44px target) that calls `infowindow.close()`. Fallback CSS: `.gm-style-iw-ch { padding-top: 0; min-height: 0; }` and trim `.gm-style-iw-d` top padding.
 - **Verify:** tap a marker: card starts directly with the name, close button works, tall content still scrolls, dark and light themes.
-### C. Restore the Apple Maps option (all platforms, no iOS detection)  [OPEN]
+### C. Restore the Apple Maps option (all platforms, no iOS detection)  [DONE 0.11.0]
 - **Symptom:** the marker popup "Navigate" in `map.js` (~line 197) is Google-only. Apple support survives only in `optimize-route.js` (`buildAppleMapsUrl`, primary/"Open full route" buttons, per-row "Go"), and it is gated on `isIOS`. The sheet's Apple primary also silently falls back to Google above `MAX_APPLE_STOPS` = 15 stops.
 - **Spec:**
   1. Remove `isIOS` entirely (`optimize-route.js` ~line 472 and every use). Apple Maps links (`https://maps.apple.com/...`) work in any browser: they open the Maps app on Apple devices and Apple Maps on the web elsewhere, so always offer both apps.
@@ -160,7 +160,7 @@ Not built until routing supports mixed modes (currently one `travelMode` per rou
 - **Files:** map.css, optimize-route.js (markup/classes), sync settings markup.
 - **Verify:** both controls read as buttons at 390px, 44px tap targets, open/close works, keyboard focus visible.
 
-### E. Implement the Apple Maps change  [OPEN, do first next session]
+### E. Implement the Apple Maps change  [DONE 0.11.0]
 Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, "Preferred maps app" setting, popup second button, both apps in the sheet, 15-stop Apple segments). Steps 3-6 are now done, so this is the next code task.
 
 ### F. Start and end locations in the route and total time  [OPEN]
