@@ -44,7 +44,7 @@
     return chunk(points, MAX_APPLE_POINTS).map(function (c, idx) {
       var dest = c.pts[c.pts.length - 1];
       var url = 'https://maps.apple.com/directions?destination=' + ll(dest) + '&mode=' + mode;
-      if (idx === 0 && start) url += '&source=' + ll(start);
+      // No `source`: Apple then starts from "Current Location", which is what enables the Go button (a fixed start only offers Steps).
       c.pts.slice(0, -1).forEach(function (p) { url += '&waypoint=' + ll(p); });
       return { url: url, label: label(c, points.length), stopCount: c.pts.length };
     });

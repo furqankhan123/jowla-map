@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.16.2';
+const APP_VERSION = '0.17.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -681,7 +681,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
   const otherApp = pref === 'apple' ? 'google' : 'apple';
   const segRow = (app) => {
     const segs = segsFor(app);
-    return `<div class="seg-row"><span class="seg-app">${appName(app)}${app === 'apple' ? ' · overview (tap Steps)' : ''}</span>` +
+    return `<div class="seg-row"><span class="seg-app">${appName(app)}</span>` +
       segs.map((seg, i) => `<a class="seg-btn${app === 'apple' ? ' apple' : ''}" href="${e(seg.url)}" target="_blank" rel="noopener" ` +
         `aria-label="${appName(app)} ${segs.length > 1 ? e(seg.label) : 'route'}" title="${e(seg.label)}">${segs.length > 1 ? i + 1 : 'Start'}</a>`).join('') + '</div>';
   };

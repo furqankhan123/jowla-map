@@ -82,7 +82,7 @@ function initialiseMap() {
     var mapOptions = {
       zoom: 16, center: frisco,
       gestureHandling: 'greedy', clickableIcons: false,
-      mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+      mapTypeControl: false, streetViewControl: false, fullscreenControl: false, cameraControl: false,
       zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER }
     };
     map = new google.maps.Map(document.getElementById('map'), mapOptions);

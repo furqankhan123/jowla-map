@@ -171,27 +171,29 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 - **UI:** the end point appears as a final row in the stop list (no Visit/Done buttons) with its ETA. Google/Apple navigation URLs use the chosen end as `destination` (Apple/Google segments: final segment ends at the end point).
 - **Edge cases:** end equals start with one stop; end unreachable by mode; Routes API waypoint cap (25 intermediates) still applies.
 - **Verify:** same-start/end round trip adds the return time; different end changes the order and total; fit-to-time respects it; clearing the end returns to same-as-start; persisted route restores the end.
-## Session handoff (state at 494014a, v0.10.0, pushed to origin/main)
+## Session handoff (state at v0.17.0, on `main`; read this first)
 
-**Done:** steps 1-6 (mobile-first, done/next, in-map filters, PWA, quick-log write-back, cluster suggestions) and bugs A and B. **Step 5 is code-complete but inert** until the owner deploys `apps-script/Code.gs` and enters the URL and token under Route settings > Sheet sync. **Open:** C/E (Apple Maps), D (settings as buttons), F (start/end + total time), step 7 (deferred), and the offline route list without the map.
+**How to work:** develop on branch `claude/implement-plan-md-qjez3u`, commit + push each non-trivial change, then fast-forward `main` (GitHub Pages serves `main`: https://furqankhan123.github.io/). Bump `APP_VERSION` (optimize-route.js), the `?v=` strings in newindex.html, `CACHE_VERSION` in sw.js and add a CHANGELOG entry per release. After deploy the service worker serves the old files: reload twice. Run `node tests/segments.test.js` and `node --check` on every JS file before pushing. Never put real addresses, names or coordinates from screenshots into the repo or commit messages.
 
-**Nothing from this session has been verified on a real phone.** Only `node --check`, a Node unit check of `findClusters`, and reading live sheet data were done. First task next session: run the app on a phone (or DevTools at 390px) and walk the Verify lists for A, B, step 3 (filters), step 4 (install/offline), step 5 (against a copy of the sheet) and step 6 (clusters).
+**Built and live (all user-tested on an iPhone unless noted):** mobile-first sheet; Optimize (GPS start, fit-to-time, ETAs, numbered markers); Go/Log/done flow; in-map filters; cluster suggestions; PWA shell; round trip by default; "Set a different end point" by address (Places API (New) + Geocoder fallback) or current location; compact numbered segment buttons per app (`segments.js`, tested); preferred maps app setting (`nav.js`); optimize icon; first-run tour (`tour.js`); sheet state persists across app switches; quick-log write-back code (inert until configured).
 
-**Facts learned from the live sheet (use these, don't re-derive):**
-- Visit codes in use: `No Response`, `Left Message`, `Gave Targheeb` (plus `Do Not Visit` and `[auto] comment update`; many address strings also sit in the visitcode column, so treat unknown codes as noise).
-- Date format: `October 25, 2026` (long month, day, year). `sheetDate()` in `writeback.js` and the regex in the Apps Script rely on it.
-- `rowid` (column V) is the sheet row number; about 45,400 rows load into the page. The Sheets API key is HTTP-referrer restricted (direct curl returns 403), which is correct.
+**Verified facts (don't re-derive):**
+- Google segment URLs: explicit `origin` (previous destination) + raw `lat,lng` waypoints joined by `|` works; encoded commas made the Google Maps app load forever.
+- Apple Maps: a fixed `source=` makes Apple show only **Steps**; omitting it (start = Current Location) is expected to show **Go** (0.17.0, needs confirmation on the phone). Apple's practical cap is 15 points per link.
+- Places legacy API is unavailable for new projects; the key must allow Places API (New) and Geocoding API.
+- The Google "camera control" (4-arrows button, bottom right) was removed with `cameraControl:false`.
+- Sheet: visit codes `No Response`, `Left Message`, `Gave Targheeb` (plus `Do Not Visit`, `[auto] comment update`; address strings also appear in the visitcode column = noise). Date format `October 25, 2026`. `rowid` (column V) is the row number; ~45,400 rows load. The Sheets key is referrer-restricted (curl returns 403, correct).
 
-**Suggestions / follow-ups (not planned above):**
-1. **Quick-log Undo:** the Undo toast only un-marks the stop; the sheet write stays. Either drop Undo for quick-log, or add an undo write restoring the previous code/date (store them in the queue item).
-2. **Apps Script hardening:** test on a copy of the sheet first; keep `ALLOWED_CODES` (Code.gs) in sync with `QUICK_CODES` (writeback.js); the endpoint is public by URL so the token is the only protection, rotate it if leaked.
-3. **Performance at ~45k rows:** `applyFilters` recreates every marker; consider marker clustering or rendering only markers in the viewport, and debounce the filter-sheet name input (it recounts all rows per keystroke).
-4. **PWA polish:** icons are generated placeholders (replace with real artwork); bump `CACHE_VERSION` in `sw.js` with every release alongside `APP_VERSION` and the `?v=` strings (one source of truth would stop drift); add the offline route list (render `ensurePanel`/`showRoutePanel` from localStorage before Maps loads).
-5. **Repo hygiene:** add `.playwright-mcp/` and `.mcp.json` to `.gitignore`; add a `.gitattributes` with `* text=auto` to stop the LF/CRLF warnings; remove the unused `infoWindow = new google.maps.InfoWindow` near the top of `initialiseMap` in map.js.
-6. **Cluster empty state:** Suggest uses `window.visibleLocations`, so filters apply; mention in the empty-state text when a filter is active.
-7. **README:** still to be filled from this file (workflow section) once C-F land.
-
-**Recommended order next:** E/C (Apple Maps) -> F (start/end/total time; affects routing and fit-to-time) -> D (settings buttons, markup/CSS only) -> phone verification pass -> suggestions 1, 3, 5 -> step 7 only after F provides per-leg modes.
+**Open items (pick up here):**
+1. **Confirm Apple Go** after 0.17.0 on the phone (segment buttons and the Apple "12 stops vs 15" count mismatch seen earlier).
+2. **Owner setup for quick-log (step 5):** deploy `apps-script/Code.gs` on a copy of the sheet first, then fill `syncUrl`/`syncToken` in `config.js`. Until then quick-log chips are hidden. Keep `ALLOWED_CODES` (Code.gs) = `QUICK_CODES` (writeback.js); rotate the token if leaked.
+3. **Quick-log Undo** only un-marks locally; the sheet write stays. Drop Undo for quick-log or queue a restoring write.
+4. **Performance at ~45k rows:** `applyFilters` recreates every marker (marker clustering / viewport rendering); debounce the filter name input.
+5. **Offline route list without the map** (render the route sheet from localStorage before Maps loads).
+6. **PWA polish:** real icons (current ones are placeholders); one source of truth for version strings.
+7. **Cluster empty state** should mention an active filter.
+8. **Saved places** for start/end; **step 7** walk/drive path coloring (needs per-leg modes).
+9. **Ongoing:** keep both API keys HTTP-referrer restricted; keep the screenshot-privacy rule above.
 
 ## Future improvements (backlog, collected 0.12.0)
 
@@ -219,7 +221,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 4. **First-time walkthrough tour.** Short coach-mark tour shown once (localStorage `jowla-tour-done`), with Next/Skip and a "Replay tour" button in Route settings: (1) filters FAB, (2) suggest clusters, (3) optimize icon, (4) route sheet: Go / Log / done toggle, (5) end point and maps app choice. Implement as small `tour.js` (no deps): dimmed overlay with a spotlight around the target element, tooltip card, 44px buttons, works at 390px, re-positions on resize. Mark done on finish or skip.
 5. **Apple Maps launch shows "Steps" instead of "Go".** Apple Maps opens the route overview with a Steps button rather than starting navigation. Investigate the URL: for single-destination links use `https://maps.apple.com/?daddr=LAT,LNG&dirflg=d` (already used for Go); for multi-stop `maps.apple.com/directions` links Apple shows the overview and the user must tap Go. Options: (a) accept and tell the user in the tour/tooltip, (b) try `http://maps.apple.com/?saddr=Current+Location&daddr=...&dirflg=d` or the `maps://` scheme on Apple devices, (c) for the Go pill and per-row Go use the single-stop link so navigation starts directly, reserving multi-stop links for the segment buttons. Test on iPhone before choosing.
 
-### Round 4 (DONE 0.15.1/0.16.0: sheet state, Google segments confirmed, Apple overview labelled; still to check on phone: address end point, Apple "12 stops" vs 15 count)
+### Round 4 (DONE 0.15.1-0.17.0; Apple fix = drop fixed `source`, confirm on phone)
 Note: Places and Geocoding are confirmed enabled on the Maps key, so the address end point should work; verify it on the phone. Screenshots received and reviewed (findings added under each item).
 
 1. **Apple Maps landing screen.** Screenshot findings: Apple opens a "Directions" overview with start and end both set to the same street address (so the round trip end now works), "12 stops", 28 min / 7.1 mi, and only a **Steps** button. Apple Maps does not offer a Go/start button for multi-stop routes, so this is Apple's behavior, not a bug in our URL; there is no URL fix. Decision: use single-stop `daddr` links for anything that should start turn-by-turn (Go pill, row Go, Apple "Start" primary = first stop), and relabel multi-stop Apple segment buttons "Overview" with the tour note "tap Steps". Also check why the overview says 12 stops when the route has 15 (segment boundary or deduped points). Capture what Apple Maps shows after launching a route (screenshots to be reviewed). Goal: user lands ready to navigate. Test URL variants on iPhone: `https://maps.apple.com/?saddr=Current%20Location&daddr=LAT,LNG&dirflg=d` (single stop), `maps://?...`, and multi-stop `directions?...&waypoint=` forms; compare whether each shows Go or only Steps. Per-row/pill Go should use whichever form starts navigation directly; segment buttons keep multi-stop links and the tour/tooltip says to tap Go.
@@ -230,17 +232,6 @@ Note: Places and Geocoding are confirmed enabled on the Maps key, so the address
 ### Round 5 (item 1 DONE 0.16.1 via Places API (New); item 2 done)
 1. **End point search fails.** Screenshot: typing in "Set a different end point" shows Google's dialog "This page can't load Google Maps correctly. Do you own this website?" (the Places Autocomplete request is rejected, so no suggestions). The map itself loads, so the key works for Maps JS but not for Places. Check in Google Cloud Console for the key used in `newindex.html`: (a) API restrictions include **Maps JavaScript API and Places API** (the "Places API" legacy service used by `google.maps.places.Autocomplete`; if only "Places API (New)" is enabled, the legacy widget fails); (b) HTTP referrer restrictions include `https://furqankhan123.github.io/*`; (c) billing is enabled on the project. Code side: stop relying on the widget alone: on error (`gm_authFailure` / no suggestions) fall back to the Geocoder "Set end" button, and show a toast "Address search unavailable"; consider switching to the Places (New) `PlaceAutocompleteElement` or the Geocoding API only. Also make the picker usable with the keyboard open (scroll the input into view, the dialog covered the field).
 2. **Privacy: keep personal addresses out of the repo.** The street address seen in the Apple Maps screenshot was written into `PLAN.md` by mistake. It was removed from the file and from git history (history rewritten and force-pushed to `main` and the working branch). Rule going forward: never put real addresses, names or coordinates from screenshots into the repo, docs or commit messages. Old commit SHAs may stay reachable on GitHub until GitHub garbage-collects; to purge them immediately, contact GitHub Support or delete and recreate the repository.
-
-### From the session handoff
-- **Quick-log Undo:** Undo only un-marks locally; the sheet write stays. Either drop Undo for quick-log or queue an undo write restoring the previous code/date.
-- **Apps Script hardening:** test on a copy of the sheet; keep `ALLOWED_CODES` (Code.gs) in sync with `QUICK_CODES` (writeback.js); the token is the only protection, rotate if leaked.
-- **Performance at ~45k rows:** `applyFilters` recreates every marker; use marker clustering or viewport-only rendering; debounce the filter name input.
-- **PWA polish:** replace placeholder icons; one source of truth for version (`APP_VERSION`, `CACHE_VERSION`, `?v=`); offline route list rendered from localStorage before Maps loads.
-- **Cluster empty state:** mention an active filter in the empty-state text.
-- **README:** fill from this file once the above land.
-- **Saved places** for start/end (F option not built).
-- **Step 7:** walk/drive path coloring, only once per-leg modes exist.
-- **Phone verification pass:** walk the Verify lists for A, B, steps 3-6, C/E, D and F on a real phone (none verified yet).
 
 ## Suggested workflow once live
 1. Open the map and tap **Optimize** (or set a custom start first).

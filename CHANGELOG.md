@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.17.0]
+- Apple Maps links no longer pass a fixed `source`, so Apple starts from Current Location and shows Go (a fixed start only offers Steps).
+- Hid Google's camera/pan control button on the map.
+- Docs refreshed (README, PLAN handoff).
+
 ## [0.16.2]
 - Closing the route sheet while half/full open no longer hides the floating buttons.
 
