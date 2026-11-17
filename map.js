@@ -1,4 +1,4 @@
-var map, infoWindow;
+var map;
 var locations = [];
 var visibleLocations = [];
 var markers = [];
@@ -86,7 +86,6 @@ function initialiseMap() {
       zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER }
     };
     map = new google.maps.Map(document.getElementById('map'), mapOptions);
-    infoWindow = new google.maps.InfoWindow;
 
     applyUrlFilters();
 
