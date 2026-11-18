@@ -1,7 +1,7 @@
 /* Jowla Map service worker. Bump CACHE_VERSION to invalidate caches. */
-const CACHE_VERSION = 'v0.19.4';
+const CACHE_VERSION = 'v0.19.5';
 const SHELL_CACHE = 'jowla-shell-' + CACHE_VERSION;
-const DATA_CACHE = 'jowla-data-' + CACHE_VERSION;
+const DATA_CACHE = 'jowla-data'; // unversioned: offline data survives deploys
 const SHELL = [
   'index.html', 'newindex.html', 'map.css', 'map.js', 'nav.js', 'tour.js', 'segments.js', 'config.js', 'optimize-route.js', 'cluster.js', 'writeback.js',
   'manifest.webmanifest', 'vendor/jquery-3.1.1.min.js',
@@ -9,7 +9,12 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL)));
+  // No automatic skipWaiting: the page offers a Reload toast, then posts SKIP_WAITING.
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

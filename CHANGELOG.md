@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.5]
+- Service worker updates are no longer forced: a New version available toast with Reload appears; the cached sheet data is kept across deploys so offline mode still has data after an update.
+
 ## [0.19.4]
 - Optimize usually needs one Routes API call: stops are pre-trimmed with a free distance estimate, a second call only happens if the real total is over 10 percent past the target, and an over-target result is flagged.
 
