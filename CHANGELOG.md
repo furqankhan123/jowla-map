@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.21.1]
+- Travel mode now defaults to Drive (saved Auto settings are switched once); the Places address field suggests addresses as you type, like the end-point picker.
+
 ## [0.21.0]
 - Advanced Markers with clustering (Map ID in config.js, self-hosted markerclusterer): markers are created once per row and filters only add or remove them from the clusterer; route, start and location markers moved to Advanced Markers.
 

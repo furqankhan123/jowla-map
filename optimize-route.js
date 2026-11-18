@@ -12,13 +12,15 @@ const ROUTE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_FIT_ITERATIONS = 3;
 
 // User-adjustable settings (persisted)
-const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, defaultEnd: null, travelPref: 'auto' };
+const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, defaultEnd: null, travelPref: 'DRIVE' };
 try {
   Object.assign(opts, JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'));
 } catch (e) {}
 function saveOpts() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(opts)); } catch (e) {}
 }
+// One-time: the default travel mode changed from Auto to Drive (saved settings still held 'auto').
+if (opts.travelDefault !== 2) { opts.travelPref = 'DRIVE'; opts.travelDefault = 2; saveOpts(); }
 const API_KEY = window.JOWLA_CONFIG.apiKey;
 
 
@@ -646,7 +648,7 @@ function refreshSettingsUi() {
       <label>Target time ${sel('opt-target', opts.targetMins, [[30, '30 min'], [45, '45 min'], [60, '60 min'], [0, 'No limit']])}</label>
       <label>Skip visited within ${sel('opt-days', opts.recentDays, [[30, '30 days'], [90, '90 days'], [180, '180 days']])}</label>
       <label class="chk"><input type="checkbox" id="opt-recent"${opts.includeRecent ? ' checked' : ''}> Include recently visited</label>
-      <label>Travel mode ${sel('opt-mode', opts.travelPref, [['auto', 'Auto'], ['WALK', 'Walk'], ['DRIVE', 'Drive']])}</label>
+      <label>Travel mode ${sel('opt-mode', opts.travelPref, [['DRIVE', 'Drive'], ['WALK', 'Walk'], ['auto', 'Auto']])}</label>
       <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
       <label>Start ${placeSel('opt-start', opts.customStart && opts.customStart.placeId, 'My location', opts.customStart && !opts.customStart.placeId ? opts.customStart.name : '')}</label>
       <label>End ${placeSel('opt-end', opts.defaultEnd && opts.defaultEnd.placeId, 'Back to start')}</label>
@@ -654,6 +656,7 @@ function refreshSettingsUi() {
         <div id="places-list">${readPlaces().map((p) => `<div class="place-row"><span>${escapeHtml(p.name)}</span><button type="button" class="place-del" data-id="${escapeHtml(p.id)}" aria-label="Delete ${escapeHtml(p.name)}">&times;</button></div>`).join('') || '<div class="meta">No saved places yet.</div>'}</div>
         <input id="place-name" type="text" placeholder="Name (Home, Masjid…)" autocomplete="off">
         <input id="place-addr" type="text" placeholder="Address (leave blank to use my location)" autocomplete="off">
+        <div id="place-sugg"></div>
         <button type="button" id="place-save" class="nav-btn set-end">Save place</button>
       </details>
       <button id="opt-rerun" type="button" class="nav-btn primary">Optimize</button>
@@ -699,6 +702,19 @@ function refreshSettingsUi() {
     const det = document.querySelector('.places-box');
     if (det) det.open = true;
   }));
+  const addrInput = document.getElementById('place-addr');
+  const addrList = document.getElementById('place-sugg');
+  if (addrInput && addrList && window.google && google.maps) {
+    attachPlaceAutocomplete(addrInput, addrList, (pt) => {
+      addrInput.value = pt.name;
+      addrInput.dataset.lat = pt.lat; addrInput.dataset.lng = pt.lng; addrInput.dataset.name = pt.name;
+      const nm = document.getElementById('place-name');
+      if (nm && !nm.value.trim()) nm.value = pt.name;
+    });
+    addrInput.addEventListener('input', () => {
+      if (addrInput.value !== addrInput.dataset.name) { delete addrInput.dataset.lat; delete addrInput.dataset.lng; delete addrInput.dataset.name; }
+    });
+  }
   const saveBtn = document.getElementById('place-save');
   if (saveBtn) saveBtn.addEventListener('click', async () => {
     const name = document.getElementById('place-name').value;
@@ -706,7 +722,8 @@ function refreshSettingsUi() {
     if (!name.trim()) { showToast('Give the place a name first', { type: 'error' }); return; }
     let pt = null;
     try {
-      if (addr) pt = await geocodeAddress(addr);
+      if (addr && addrInput && addrInput.dataset.lat) pt = { lat: parseFloat(addrInput.dataset.lat), lng: parseFloat(addrInput.dataset.lng) };
+      else if (addr) pt = await geocodeAddress(addr);
       else pt = await new Promise((resolve, reject) => {
         if (!navigator.geolocation) { reject(new Error('Location unavailable')); return; }
         navigator.geolocation.getCurrentPosition((p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
@@ -722,6 +739,45 @@ function refreshSettingsUi() {
   if (window.bindSyncSettings) bindSyncSettings();
 }
 
+/** Places (New) autocomplete: suggestions under `input` in `listEl`; onPick({lat, lng, name}) when one is chosen. */
+function attachPlaceAutocomplete(input, listEl, onPick) {
+  let timer = null, placesLib = null, token = null;
+  const loadPlaces = () => placesLib || (placesLib = google.maps.importLibrary('places'));
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 3) { listEl.innerHTML = ''; return; }
+    timer = setTimeout(async () => {
+      try {
+        const lib = await loadPlaces();
+        token = token || new lib.AutocompleteSessionToken();
+        const req = { input: q, sessionToken: token };
+        const b = mapRef && mapRef.getBounds();
+        if (b) req.locationBias = b;
+        const { suggestions } = await lib.AutocompleteSuggestion.fetchAutocompleteSuggestions(req);
+        listEl.innerHTML = '';
+        suggestions.slice(0, 5).forEach((sg) => {
+          const pp = sg.placePrediction;
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'pick-end';
+          btn.textContent = pp.text.toString();
+          btn.addEventListener('click', async () => {
+            const place = pp.toPlace();
+            await place.fetchFields({ fields: ['location', 'displayName', 'formattedAddress'] });
+            token = null;
+            listEl.innerHTML = '';
+            onPick({ lat: place.location.lat(), lng: place.location.lng(), name: place.displayName || place.formattedAddress });
+          });
+          listEl.appendChild(btn);
+        });
+      } catch (e) {
+        listEl.innerHTML = '';
+        showToast('Suggestions unavailable: type the full address instead', { type: 'error' });
+      }
+    }, 300);
+  });
+}
+
 /** Address entry for a different end point: Places (New) autocomplete suggestions, Geocoder fallback, or current location. */
 function openEndPicker() {
   const pk = document.getElementById('end-picker');
@@ -734,47 +790,12 @@ function openEndPicker() {
   pk.hidden = false;
   const input = document.getElementById('end-addr');
   const list = document.getElementById('end-sugg');
-  let timer = null, placesLib = null, token = null;
-
   const geocode = (q) => new google.maps.Geocoder().geocode({ address: q }, (res, status) => {
     if (status !== 'OK' || !res[0]) { showToast('Address not found', { type: 'error' }); return; }
     const l = res[0].geometry.location;
     rerouteWithEnd({ lat: l.lat(), lng: l.lng(), name: q });
   });
-  const loadPlaces = () => placesLib || (placesLib = google.maps.importLibrary('places'));
-
-  input.addEventListener('input', () => {
-    clearTimeout(timer);
-    const q = input.value.trim();
-    if (q.length < 3) { list.innerHTML = ''; return; }
-    timer = setTimeout(async () => {
-      try {
-        const lib = await loadPlaces();
-        token = token || new lib.AutocompleteSessionToken();
-        const req = { input: q, sessionToken: token };
-        const b = mapRef && mapRef.getBounds();
-        if (b) req.locationBias = b;
-        const { suggestions } = await lib.AutocompleteSuggestion.fetchAutocompleteSuggestions(req);
-        list.innerHTML = '';
-        suggestions.slice(0, 5).forEach((sg) => {
-          const pp = sg.placePrediction;
-          const btn = document.createElement('button');
-          btn.type = 'button'; btn.className = 'pick-end';
-          btn.textContent = pp.text.toString();
-          btn.addEventListener('click', async () => {
-            const place = pp.toPlace();
-            await place.fetchFields({ fields: ['location', 'displayName', 'formattedAddress'] });
-            token = null;
-            rerouteWithEnd({ lat: place.location.lat(), lng: place.location.lng(), name: place.displayName || place.formattedAddress });
-          });
-          list.appendChild(btn);
-        });
-      } catch (e) {
-        list.innerHTML = '';
-        showToast('Suggestions unavailable: type the full address and tap Set end', { type: 'error' });
-      }
-    }, 300);
-  });
+  attachPlaceAutocomplete(input, list, (pt) => rerouteWithEnd(pt));
   document.getElementById('end-go').addEventListener('click', () => {
     const q = input.value.trim();
     if (!q) { showToast('Type an address first', { type: 'error' }); return; }
