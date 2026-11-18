@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.5]
+- Quick-log: double taps no longer log the next stop (1.5 s cooldown, 10 s per-stop guard, next chips fade in).
+
 ## [0.18.4]
 - Quick-log now submits like the real Visit Details form: a GET with the fields in the query string, and no empty Language/Comments (empty checkbox values caused 400).
 

@@ -111,8 +111,17 @@ async function flushQueue() {
 }
 
 /** Record a visit for a route stop and mark it done. */
+const recentLogs = {};
+let cooldownUntil = 0;
+const COOLDOWN_MS = 1500;
 function quickLog(stop, code) {
   if (!stop || stop.rowid == null) return;
+  const now = Date.now();
+  if (now < cooldownUntil) return;
+  const key = stop.db + ':' + stop.rowid;
+  if (recentLogs[key] && now - recentLogs[key] < 10000) return;
+  recentLogs[key] = now;
+  cooldownUntil = now + COOLDOWN_MS;
   const date = sheetDate();
   // Reflect immediately so the recent-visit filter skips it on the next Optimize.
   const loc = (window.locations || []).find((l) => String(l.rowid) === String(stop.rowid) && String(l.db) === String(stop.db));
@@ -136,6 +145,11 @@ function renderQuickLog(container, stop) {
   if (!quickLogEnabled() || !stop || stop.rowid == null || !stop.db) return;
   const row = document.createElement('div');
   row.className = 'quick-row';
+  const remaining = cooldownUntil - Date.now();
+  if (remaining > 0) {
+    row.classList.add('cooldown');
+    setTimeout(() => row.classList.remove('cooldown'), remaining);
+  }
   QUICK_CODES.forEach((code) => {
     const b = document.createElement('button');
     b.type = 'button';

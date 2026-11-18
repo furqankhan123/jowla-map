@@ -196,6 +196,144 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 8. **Saved places** for start/end; **step 7** walk/drive path coloring (needs per-leg modes).
 9. **Ongoing:** keep both API keys HTTP-referrer restricted; keep the screenshot-privacy rule above.
 
+Items 4–8 are folded into **Round 6** below, which is the ordered plan to work from next.
+
+## Round 6: code review findings (collected at 0.18.4, build in this order)
+
+Order rule: bugs that lose or misrecord visits first, then performance at ~45k rows, then reliability/offline, then maintainability, then features. Each item is one release unless marked otherwise. Sizes: S < 1h, M a few hours, L a day+.
+
+| # | Item | Type | Size | Depends on |
+|---|------|------|------|-----------|
+| 6.1 | Quick-log double tap logs the next stop (DONE 0.18.5) | bug | S | - |
+| 6.2 | Visited stops come back in the next Optimize | bug | M | - |
+| 6.3 | Quick-log real Undo window | bug | S | 6.2 |
+| 6.4 | ETAs ignore progress | bug | S | - |
+| 6.5 | Optimize silently replaces a route in progress; "Continue from here" | bug/UX | S | 6.2 |
+| 6.6 | Data load failure = blank page; map waits on data | bug | S | - |
+| 6.7 | Stale custom-start UI text and dead code | cleanup | S | - |
+| 6.8 | "More than N days" filter drops never-visited stops (owner decision) | bug? | S | - |
+| 6.9 | Precompute row fields + debounce filters | perf | S | - |
+| 6.10 | Marker rendering at 45k rows (Advanced Markers + clustering) | perf | L | 6.9 |
+| 6.11 | Fewer Routes API calls per Optimize | perf/cost | S | - |
+| 6.12 | Service worker update prompt; keep offline data across deploys | reliability | S | - |
+| 6.13 | Refresh sheet data without reloading | reliability | S | 6.2 |
+| 6.14 | Offline route list before Maps loads | reliability | M | 6.6 |
+| 6.15 | One config + one version string | maintenance | S | - |
+| 6.16 | Remove jQuery | maintenance | S | 6.15 |
+| 6.17 | Unit tests for pure logic + CI | maintenance | M | 6.15 |
+| 6.18 | Shared city list for index.html | maintenance | S | - |
+| 6.19 | Travel mode chosen from stop spacing, not distance from start | feature | S | - |
+| 6.20 | Cluster empty state mentions active filters | feature | S | - |
+| 6.21 | Real PWA icons | feature | S | - |
+| 6.22 | Saved places for start/end | feature | M | 6.7 |
+| 6.23 | Walk/drive path coloring (step 7) | feature | - | deferred |
+
+### 6.1 Quick-log double tap logs the next stop
+- **Problem:** `quickLog` ([writeback.js](writeback.js) ~114) calls `markRouteStopDone`, which runs `updateDoneUi` and immediately re-renders the chips for the *next* stop in the same place. A double tap (or a slow first response) lands on the new chip and logs the next stop with the same code.
+- **Fix:** after a chip tap, disable all quick chips and the Log button for ~1.5 s (CSS class `.cooldown`, `pointer-events:none`, dimmed), and render the next stop's chips with a short fade-in. Also ignore a second `quickLog` for the same `rowid` within 10 s.
+- **Verify:** rapid double tap on "No Response" logs exactly one stop; queue holds one item; next stop's chips become tappable after the cooldown.
+
+### 6.2 Visited stops come back in the next Optimize
+- **Problem:** only quick-log updates `loc.visitdate` in memory. "Log visit ✓", the row "Log" link, the popup "Visit Details" and the done toggle only set `stop.done` on the route. A second Optimize in the same session (or after a reload, before the form pipeline updates the sheet) proposes the same houses again. Quick-log's in-memory update is also lost on reload.
+- **Fix:** a local visit ledger in localStorage `jowla-local-visits` = `{ "<db>:<rowid>": "<ISO date>" }`. Write to it from `markStopDone` and `quickLog`; remove the entry on Undo. On data load ([map.js](map.js) `initialiseMap`), merge it in: if the sheet's `visitdate` is older than the ledger date (or empty), use the ledger date. Prune entries older than 30 days or once the sheet catches up. `getStopsInBounds` then excludes them with no other change.
+- **Verify:** log a stop via the form, Optimize again: it is not offered; reload and Optimize: still not offered; Undo: offered again; ledger entry disappears once the sheet shows a newer date.
+
+### 6.3 Quick-log real Undo window
+- **Problem:** Undo after quick-log only un-marks the stop locally; the form submission is already sent and cannot be withdrawn (handoff item 3).
+- **Fix:** hold new quick-log items in the queue with `sendAfter = now + 7 s` (matches the action toast). `flushQueue` skips items not yet due and re-runs via `setTimeout`. Undo removes the item from the queue (if unsent), reverts `loc.visitcode/visitdate` and the 6.2 ledger entry. Items already sent: toast "Already submitted: use Visit Details to correct".
+- **Verify:** tap a chip then Undo within 7 s: nothing is submitted (Network tab); without Undo: one GET after ~7 s; offline items still queue and flush.
+
+### 6.4 ETAs ignore progress
+- **Problem:** `showRoutePanel` ([optimize-route.js](optimize-route.js) ~701) computes every ETA from `Date.now()` starting at stop 1, so halfway through a route the times are wrong (done stops still count, next stop's ETA assumes you are at the start). The header "ends at" has the same flaw.
+- **Fix:** compute ETAs from now starting at the first undone stop: its travel leg is unknown, so use its `legSecs` entry as an estimate (or 0 if the previous stop is done and you are presumably there), then add legs + `AVG_VISIT_MINS` for the remaining undone stops and the end leg. Done rows show "✓" instead of a time. Recompute in `updateDoneUi` (not only on full render) and once a minute while the sheet is visible.
+- **Verify:** mark 3 stops done: next stop's ETA is ~now + leg, end time shrinks accordingly; undo restores.
+
+### 6.5 Optimize replaces a route in progress; "Continue from here"
+- **Problem:** tapping Optimize with an active route discards it (and its done state) without asking.
+- **Fix:** if `currentRoute` has undone stops, show a small choice sheet: "Re-plan remaining N stops from here" (reroute only the undone stops from current GPS, keeping done state; reuses `requestRoute` with `old.stops.filter(!done)` and the current end) / "New route" / Cancel. When all stops are done, the primary area shows "Find more stops" which runs a normal Optimize (done stops are already excluded by 6.2).
+- **Verify:** mid-route Optimize shows the choice; "Re-plan" keeps done rows and reorders the rest from the current position; "New route" behaves as today.
+
+### 6.6 Data load failure shows a blank page
+- **Problem:** `initialiseMap` ([map.js](map.js) ~57) creates the map only inside the `$.getJSON` success callback and has no error handler. A failed Sheets fetch with no cache leaves a blank screen with no message; on a slow network the user stares at nothing while ~45k rows download.
+- **Fix:** create the map immediately (centered on the last viewport, stored in localStorage `jowla-last-view`, else the default), show a "Loading stops…" toast/spinner, then fetch data. On failure: error toast with a "Retry" action. Keep the offline toast when served from cache.
+- **Verify:** DevTools block `sheets.googleapis.com`: map shows, error + Retry appear, Retry works after unblocking; normal load shows the map before the markers.
+
+### 6.7 Stale custom-start UI text and dead code
+- **Problem:** "Set as start" was removed from the popup in 0.13.0, but Route settings still says "GPS (or tap a pin → “Set as start”)" ([optimize-route.js](optimize-route.js) ~565), `setRouteStart` is still exported, and an old `opts.customStart` saved by an earlier version keeps silently overriding GPS. `updateDoneUi` also runs twice per render (`showRoutePanel` and `renderRoute`).
+- **Fix:** settings show "Start: your location" (or the saved custom start with "clear" if one exists); remove `setRouteStart`/`window.setRouteStart` and `__pendingStart`'s start role (rename to `__popupLoc`); drop the duplicate `updateDoneUi` call. 6.22 later reintroduces a start choice via saved places.
+- **Verify:** no "Set as start" text anywhere; an old saved custom start can be cleared; route renders once.
+
+### 6.8 "More than N days" filter drops never-visited stops (owner decision)
+- **Problem:** in `matchesFilters` ([map.js](map.js) ~128), Visited = "More than 30/90/180 days" returns false for rows with no `visitdate`, so stops never visited are hidden by a filter meant to show "not visited recently". Unparseable dates pass every filter.
+- **Decision needed:** should "More than N days" include never-visited stops? Recommended: yes (it means "not visited in the last N days"). If yes, change the empty-date branch; unparseable dates treated as never visited. Check index.html's original semantics match.
+- **Verify:** counts for each Visited option: "More than 30 days" ≥ "Not yet visited".
+
+### 6.9 Precompute row fields + debounce filters
+- **Problem:** every filter pass and every keystroke in "Name contains" re-runs `toLowerCase()` on names/status and `new Date(visitdate)` for ~45k rows; `getStopsInBounds` allocates a `google.maps.LatLng` per row.
+- **Fix:** at load, store `loc._name` (lowercase), `loc._sts` (lowercase), `loc._visitMs` (parsed once, NaN → null). Use them in `matchesFilters` and `getStopsInBounds` (numeric bounds compare instead of `LatLng`). Debounce the name input's count by 200 ms. Update `_visitMs` wherever `visitdate` changes (quick-log, 6.2 ledger).
+- **Verify:** typing in the name field stays smooth on a phone (Performance panel: each keystroke < 16 ms after debounce); counts unchanged vs before.
+
+### 6.10 Marker rendering at 45k rows
+- **Problem:** `applyFilters` destroys and recreates every marker (`clearMarkers` + `setLocations`), creates a new InfoWindow each time, and uses `google.maps.Marker`, which Google deprecated in Feb 2024 in favor of `AdvancedMarkerElement`. With "All" filters this is tens of thousands of DOM/canvas markers: slow first paint and filter apply, high memory on phones.
+- **Fix:** switch to `AdvancedMarkerElement` (needs a Map ID; add `mapId` to config, load `marker` library) with the existing paddle icons as `<img>` content, plus `@googlemaps/markerclusterer` (self-host in `vendor/`, add to SW shell) so zoomed-out views show cluster bubbles. Create markers once at load, keyed by `db:rowid`; filters only add/remove from the clusterer. One shared InfoWindow. Route numbered markers and start/end markers move to Advanced Markers too (same zIndex rules).
+- **Verify:** "All" filters load and pan smoothly on a mid-range phone; filter apply < 1 s; popup, Visit Details and route markers unchanged; fitBounds still works (the `count < 2000` guard can go).
+
+### 6.11 Fewer Routes API calls per Optimize
+- **Problem:** the fit-to-time loop ([optimize-route.js](optimize-route.js) ~216) can call the Routes API 3 times per Optimize (each billed as an advanced request), and can still end over the target after the 3rd try.
+- **Fix:** before the first call, trim candidates with a cheap estimate: nearest-neighbour tour length from haversine × 1.3 (detour factor) ÷ mode speed (walk 4.5 km/h, drive 30 km/h) + 3 min per stop + return leg; keep the largest prefix that fits `targetMins`. Then call once; only loop if the real total is > 10% over. Show "~N min (over target)" if it still does not fit after the loop.
+- **Verify:** log calls per Optimize over 10 runs in different areas: mostly 1; totals still within target.
+
+### 6.12 Service worker update prompt; keep offline data across deploys
+- **Problem:** stale-while-revalidate means a deploy needs "reload twice", and `DATA_CACHE` is named with `CACHE_VERSION`, so every deploy deletes the cached sheet data (offline after an update = no data).
+- **Fix:** make the data cache name unversioned (`jowla-data`) and keep it in `activate`. In the page, listen for `registration.waiting`/`updatefound` and show a toast "New version available" with a "Reload" action that posts `SKIP_WAITING` and reloads on `controllerchange`; remove the unconditional `skipWaiting()` on install.
+- **Verify:** deploy a version bump: toast appears on next visit, Reload shows the new version once; go offline after the update: data still loads from cache.
+
+### 6.13 Refresh sheet data without reloading
+- **Problem:** data loads once per page load; the installed PWA can stay open all day, so visits logged by others (or the form pipeline catching up) never show.
+- **Fix:** "Refresh data" button in Route settings, and an automatic refresh on `visibilitychange` when the last load is > 30 min old (silent, only when online). Refresh re-runs the fetch, rebuilds `locations` (merging the 6.2 ledger), re-applies current filters without clearing the route, and keeps the viewport.
+- **Verify:** change a test row in a sheet copy, tap Refresh: the marker/popup updates; route and done state are untouched.
+
+### 6.14 Offline route list before Maps loads (handoff item 5)
+- Render the saved route sheet from localStorage before the Maps JS API loads: split `showRoutePanel` so list/ETA/nav-link rendering does not touch `google` (only polyline/markers do), call it early from a small boot script, and attach map overlays when `initialiseMap` runs. If Maps fails to load (offline), keep the list and toast "Map unavailable offline; route list still works".
+- **Verify:** DevTools Offline + reload with a saved route: list, Go links, Log and done toggles work; going online draws the map overlays.
+
+### 6.15 One config + one version string (handoff item 6)
+- **Problem:** the API key is duplicated in [map.js](map.js), [optimize-route.js](optimize-route.js) and [newindex.html](newindex.html); the sheet ID/range and the form URL/`ENTRY` ids are hard-coded; the version lives in `APP_VERSION`, nine `?v=` strings and `CACHE_VERSION`.
+- **Fix:** move `apiKey`, `sheetId`, `sheetRange`, `formUrl`, `entry`, `mapId` and `version` into [config.js](config.js). Load the Maps script dynamically from config (no key in HTML). Add `tools/bump-version.js` (Node, no deps) that rewrites `config.js` version, every `?v=` in the HTML files and `CACHE_VERSION` in sw.js, and prepends a CHANGELOG heading. Update the release steps in the handoff and README.
+- **Verify:** `grep` finds the key and version in one place each (plus generated `?v=`); `node tools/bump-version.js 0.19.0` produces a clean diff.
+
+### 6.16 Remove jQuery
+- jQuery 3.1.1 is used only for `$.getJSON` and `$.urlParam`, and that version has published CVEs (CVE-2019-11358, CVE-2020-11022/11023; not reachable from our usage, but it is dead weight in the shell cache). Replace with `fetch` and `URLSearchParams` (keep `parseCityParam` for the old `City==='X'` format), delete `vendor/jquery-3.1.1.min.js` and its SW/HTML references, and check index.html for other jQuery use first.
+- **Verify:** filters via URL still work for old bookmark formats; no `$` references remain; offline shell still loads.
+
+### 6.17 Unit tests for pure logic + CI
+- **Fix:** move pure functions into node-loadable modules with the same UMD pattern as [segments.js](segments.js): `matchesFilters`/`parseCityParam`/`filtersToQuery` (filters.js), `findClusters` + `haversine` (geo.js), `buildFormBody` (already pure), the 6.11 estimator and the 6.4 ETA calculation. Add tests in `tests/` with synthetic data only (no real names or coordinates), a `tests/run.js` that runs them all, and a GitHub Actions workflow running `node --check` on every JS file plus the tests on push/PR.
+- **Verify:** CI green on `main`; breaking a filter rule fails a test.
+
+### 6.18 Shared city list for index.html
+- index.html has a hard-coded list of ~50 cities while the map derives its list from the data, so they drift. Have index.html build its City select from the cached Sheets response (same URL as map.js, served by the SW data cache) with the static list as a fallback until data arrives; keep the selected value from `jowla-filters`.
+- **Verify:** a city present in the data but not in the old list appears on both pages.
+
+### 6.19 Travel mode from stop spacing
+- `isDenseCluster` ([optimize-route.js](optimize-route.js) ~401) measures each stop's distance from the *start*, so optimizing a tight cluster you are driving to from 5 km away always picks DRIVE, and a spread-out set near your car can pick WALK. Decide from the median nearest-neighbour distance between the stops (walk if < 250 m and the cluster's diameter < 1.5 km), with a "Travel mode: Auto / Walk / Drive" setting to override.
+- **Verify:** the cluster-from-afar case picks WALK; the override is respected and persisted.
+
+### 6.20 Cluster empty state mentions active filters (handoff item 7)
+- When no clusters are found and `currentFilters` has any value, the message says which filters are on (e.g. "Filters: City, Visited") with a "Clear filters" button; also mention the recent-visit window from Route settings.
+
+### 6.21 Real PWA icons (handoff item 6)
+- Replace the placeholder icons in `icons/` with a designed set (192, 512, 512 maskable with safe zone, 180 apple-touch); check the maskable one in Chrome's manifest preview.
+
+### 6.22 Saved places for start/end (handoff item 8)
+- Route settings "Places": save the current location or a searched address (reuse the end-picker search) under a name (Home, Masjid…), stored in localStorage `jowla-places`. Start = "My location" / a saved place; End = "Back to start" / a saved place / search. Feeds `optimizeCurrentView` (start) and `rerouteWithEnd` (end). Never commit real places to the repo.
+- **Verify:** pick a saved start: route starts there; saved end: route ends there and nav links end there; deleting a place falls back to GPS / round trip.
+
+### 6.23 Walk/drive path coloring
+- Still deferred (see Step 7). Revisit only if 6.19 leads to per-leg modes.
+
+### Ongoing (Cloud Console, owner)
+- Besides HTTP-referrer restrictions, set **API restrictions** per key (Maps key: Maps JavaScript, Routes, Places (New), Geocoding; Sheets key: Sheets only) and a **daily quota cap** on the Routes API so a leaked key cannot run up a bill.
+
 ## Future improvements (backlog, collected 0.12.0)
 
 ### From live-app usage (DONE 0.13.0; owner must fill config.js syncUrl/syncToken after deploying Code.gs)
