@@ -65,8 +65,25 @@ function renderClusterSheet(map, clusters, eligibleCount) {
   const el = ensureClusterSheet();
   const list = document.getElementById('cs-list');
   if (!clusters.length) {
+    const f = (typeof currentFilters !== 'undefined' && currentFilters) || {};
+    const active = [];
+    if (f.city) active.push('City');
+    if (f.status) active.push('Status');
+    if (f.visited) active.push('Visited');
+    if (f.name) active.push('Name');
+    const recent = (typeof opts !== 'undefined' && !opts.includeRecent) ? opts.recentDays : 0;
     list.innerHTML = '<div class="cs-empty">No dense groups found among ' + eligibleCount +
-      ' eligible stops in view. Zoom out or relax the filters.</div>';
+      ' eligible stops in view. Zoom out' + (active.length ? ' or clear the filters' : '') + '.' +
+      (active.length ? '<br>Filters: ' + active.join(', ') + '.' : '') +
+      (recent ? '<br>Stops visited in the last ' + recent + ' days are skipped (Route settings).' : '') +
+      '</div>' + (active.length ? '<button type="button" id="cs-clear" class="nav-btn">Clear filters</button>' : '');
+    const clr = document.getElementById('cs-clear');
+    if (clr) clr.addEventListener('click', () => {
+      const none = { city: '', status: '', name: '', visited: '' };
+      applyFilters(none, true);
+      try { history.replaceState(null, '', location.pathname + filtersToQuery(none)); } catch (e) {}
+      suggestClusters();
+    });
   } else {
     list.innerHTML = clusters.map((c, i) =>
       '<div class="cs-row" data-i="' + i + '">' +

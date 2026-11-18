@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.13]
+- Cluster suggestions: the empty state names the active filters and the recent-visit window, with a Clear filters button.
+
 ## [0.19.12]
 - Walk or drive is now chosen from how close the stops are to each other (not distance from you), with an Auto / Walk / Drive setting in Route settings.
 
