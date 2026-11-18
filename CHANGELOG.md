@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.1]
+- Map camera control is shown again on non-touch devices (desktop); still hidden on touchscreens.
+
 ## [0.18.0]
 - Quick-log now posts through the public Visit Details Google Form: no owner access or deploy needed; current Status values are resent so they are not wiped.
 - `apps-script/Code.gs` is now an optional standalone relay (confirmed delivery); set `syncUrl`/`syncToken` in `config.js` to use it. Quick-log toggle under `?admin=1` Sheet sync.
