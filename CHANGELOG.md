@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.3]
+- Quick-log sends the form fields as FormData (multipart) instead of a urlencoded body.
+
 ## [0.18.2]
 - Camera control moved to the bottom-left so it is not covered by the buttons and route list.
 - New list button reopens a closed route sheet.

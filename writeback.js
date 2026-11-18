@@ -40,7 +40,7 @@ function sheetDate(d) {
 
 /** Form body identical to what Visit Details submits (Language/Comments empty). */
 function buildFormBody(item) {
-  const b = new URLSearchParams();
+  const b = new FormData();
   b.append(ENTRY.db, item.db || '');
   b.append(ENTRY.rowid, String(item.rowid));
   b.append(ENTRY.name, item.name || '');
