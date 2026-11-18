@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.6]
+- Refresh data button in Route settings, plus a silent refresh when the app returns to the foreground after 30 minutes; current filters, viewport and route are kept.
+
 ## [0.19.5]
 - Service worker updates are no longer forced: a New version available toast with Reload appears; the cached sheet data is kept across deploys so offline mode still has data after an update.
 

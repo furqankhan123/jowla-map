@@ -71,7 +71,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.19.5';
+const APP_VERSION = '0.19.6';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -656,6 +656,7 @@ function refreshSettingsUi() {
         : 'your location'}</div>
       <button id="opt-rerun" type="button" class="nav-btn primary">Optimize</button>
       ${window.syncSettingsHtml ? syncSettingsHtml() : ''}
+      <button id="opt-refresh" type="button" class="nav-btn set-end">Refresh data</button>
       <button id="opt-tour" type="button" class="nav-btn set-end">Replay tour</button>
       <div class="version">v${APP_VERSION}</div>
     </div>`;
@@ -667,6 +668,8 @@ function refreshSettingsUi() {
     setNavPref(e.target.value);
     if (currentRoute) { showRoutePanel(currentRoute.stops, currentRoute.totalMins, currentRoute.travelMode, currentRoute.start, currentRoute.legSecs, currentRoute.end); }
   });
+  const refBtn = document.getElementById('opt-refresh');
+  if (refBtn) refBtn.addEventListener('click', () => window.refreshData && refreshData(false));
   const tourBtn = document.getElementById('opt-tour');
   if (tourBtn) tourBtn.addEventListener('click', () => window.startTour && startTour());
   const rerun = document.getElementById('opt-rerun');

@@ -216,7 +216,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 | 6.10 | Marker rendering at 45k rows (Advanced Markers + clustering) | perf | L | 6.9 |
 | 6.11 | Fewer Routes API calls per Optimize (DONE 0.19.4) | perf/cost | S | - |
 | 6.12 | Service worker update prompt; keep offline data across deploys (DONE 0.19.5) | reliability | S | - |
-| 6.13 | Refresh sheet data without reloading | reliability | S | 6.2 |
+| 6.13 | Refresh sheet data without reloading (DONE 0.19.6) | reliability | S | 6.2 |
 | 6.14 | Offline route list before Maps loads | reliability | M | 6.6 |
 | 6.15 | One config + one version string | maintenance | S | - |
 | 6.16 | Remove jQuery | maintenance | S | 6.15 |

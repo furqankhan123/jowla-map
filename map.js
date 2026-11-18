@@ -121,7 +121,8 @@ function initialiseMap() {
 
   var SHEET_URL = "https://sheets.googleapis.com/v4/spreadsheets/1U7JJDnTvClhdpHCje29uLwTNCiBhdPfUPxzChbxoXNQ/values/DFWDB!A2:V?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ";
 
-  function onData(data) {
+  var lastLoad = 0;
+  function onData(data, isRefresh) {
     var ledger = readLedger();
     locations = [];
     $(data.values).each(function() {
@@ -152,11 +153,30 @@ function initialiseMap() {
     if (window.hideToast) hideToast();
     if (!navigator.onLine && window.showToast) showToast('Offline — showing saved data');
 
+    lastLoad = Date.now();
+    if (isRefresh) {
+      applyFilters(currentFilters, true);
+      return;
+    }
     applyUrlFilters();
     if (typeof addOptimizeControl === 'function') {
       addOptimizeControl(map);
     }
   }
+
+  /** Re-fetch the sheet, merge the local ledger, re-apply current filters; route and viewport untouched. */
+  window.refreshData = function(silent) {
+    if (!navigator.onLine) { if (!silent && window.showToast) showToast('Offline: cannot refresh', { type: 'error' }); return; }
+    $.getJSON(SHEET_URL).done(function(data) {
+      onData(data, true);
+      if (!silent && window.showToast) showToast('Data refreshed: ' + locations.length + ' stops');
+    }).fail(function() {
+      if (!silent && window.showToast) showToast('Refresh failed', { type: 'error' });
+    });
+  };
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && lastLoad && Date.now() - lastLoad > 30 * 60 * 1000) window.refreshData(true);
+  });
 
   function loadData() {
     if (window.showToast) showToast('Loading stops…', { sticky: true });
@@ -218,13 +238,13 @@ function applyUrlFilters() {
 }
 
 /** f = {city, status, name, visited}; empty string means "no filter". */
-function applyFilters(f) {
+function applyFilters(f, keepView) {
   currentFilters = f;
   visibleLocations = locations.filter(function(loc) { return matchesFilters(loc, f); });
 
   window.visibleLocations = visibleLocations;
   clearMarkers();
-  setLocations(map, visibleLocations);
+  setLocations(map, visibleLocations, keepView);
 }
 
 /* ---- In-map filter sheet ---- */
@@ -323,7 +343,7 @@ function clearMarkers() {
   markers = [];
 }
 
-function setLocations(map, locs) {
+function setLocations(map, locs, keepView) {
   var bounds = new google.maps.LatLngBounds();
   var infowindow = new google.maps.InfoWindow({ content: "Content String", maxWidth: Math.min(320, window.innerWidth - 48), headerDisabled: true });
   window.__iw = infowindow;
@@ -336,7 +356,7 @@ function setLocations(map, locs) {
     count++;
   }
   google.maps.event.trigger(map, "resize");
-  if (count > 1 && count < 2000) {
+  if (!keepView && count > 1 && count < 2000) {
     map.fitBounds(bounds);
   }
 }
