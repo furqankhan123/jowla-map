@@ -171,11 +171,13 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 - **UI:** the end point appears as a final row in the stop list (no Visit/Done buttons) with its ETA. Google/Apple navigation URLs use the chosen end as `destination` (Apple/Google segments: final segment ends at the end point).
 - **Edge cases:** end equals start with one stop; end unreachable by mode; Routes API waypoint cap (25 intermediates) still applies.
 - **Verify:** same-start/end round trip adds the return time; different end changes the order and total; fit-to-time respects it; clearing the end returns to same-as-start; persisted route restores the end.
-## Session handoff (state at v0.18.4, on `main`; read this first)
+## Session handoff (state at v0.20.0 on `main`; 6.10 is on branch `claude/marker-clustering` as v0.21.0; read this first)
 
 **How to work:** develop on branch `claude/implement-plan-md-qjez3u`, commit + push each non-trivial change, then fast-forward `main` (GitHub Pages serves `main`: https://furqankhan123.github.io/). Release with `node tools/bump-version.js X.Y.Z "changelog line" ["plan row"]` (updates config.js version, every `?v=`, `CACHE_VERSION`, CHANGELOG, PLAN row). After deploy the service worker serves the old files: reload twice. Run `node tests/segments.test.js` and `node --check` on every JS file before pushing. Never put real addresses, names or coordinates from screenshots into the repo or commit messages.
 
 **Built and live (all user-tested on an iPhone unless noted):** mobile-first sheet; Optimize (GPS start, fit-to-time, ETAs, numbered markers); Go/Log/done flow; in-map filters; cluster suggestions; PWA shell; round trip by default; "Set a different end point" by address (Places API (New) + Geocoder fallback) or current location; compact numbered segment buttons per app (`segments.js`, tested); preferred maps app setting (`nav.js`); optimize icon; first-run tour (`tour.js`); sheet state persists across app switches; quick-log (direct to the Visit Details Google Form, verified working live in 0.18.4); camera control bottom-left on desktop; reopen-route button.
+
+**Added in 0.18.5-0.20.0 (Round 6; built and syntax/unit tested, NOT yet exercised on a phone):** quick-log double-tap guard and 7 s Undo window; local visit ledger (`jowla-local-visits`) so logged stops are not re-offered; progress-aware ETAs; re-plan / new route / cancel choice when Optimizing mid-route and a "Find more stops" button; map created before data with load error + Retry; "More than N days" now includes never-visited stops (owner decision); precomputed row fields and debounced name filter; pre-trimmed candidates so Optimize usually makes one Routes call; service-worker update toast (Reload) and unversioned offline data cache; Refresh data button and 30-minute foreground refresh; offline saved-route list when Maps cannot load; one `config.js` (keys, sheet, form, version, mapId) and `tools/bump-version.js`; jQuery removed; pure logic in `logic.js` with `tests/run.js` and a GitHub Actions workflow; `index.html` adds cities found in the data; walk/drive chosen from stop spacing with an Auto/Walk/Drive setting; cluster empty state names active filters and has Clear filters; real PWA icons (`tools/make-icons.py`); saved places for start/end (`jowla-places`, this browser only).
 
 **Verified facts (don't re-derive):**
 - Google segment URLs: explicit `origin` (previous destination) + raw `lat,lng` waypoints joined by `|` works; encoded commas made the Google Maps app load forever.
@@ -186,19 +188,15 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 - Sheet: visit codes `No Response`, `Left Message`, `Gave Targheeb` (plus `Do Not Visit`, `[auto] comment update`; address strings also appear in the visitcode column = noise). Date format `October 25, 2026`. `rowid` (column V) is the row number; ~45,400 rows load. The Sheets key is referrer-restricted (curl returns 403, correct).
 
 **Open items (pick up here):**
-1. ~~Confirm Apple Go~~ confirmed working. Remaining curiosity only: the Apple "12 stops vs 15" count seen in an earlier screenshot (likely moot now).
-2. **Quick-log (step 5) is live and needs no setup.** `writeback.js` GETs `https://docs.google.com/forms/d/e/1FAIpQLSe_TQfBBhpLky9XyTz0SuSsJpcgfF61pS8onUX4RgQxEITOpA/formResponse` with `ENTRY` ids (db 647159166, rowid 589985326, name 459245489, code 607683347, Status repeated 1275295467; Language 2108730671 and Comments 322317336 are omitted). No date field (form timestamp is used). Status is always resent so the pipeline does not wipe it. `apps-script/Code.gs` is an OPTIONAL standalone relay for confirmed delivery, to be deployed later if wanted (steps: script.google.com new project, paste, Script Property `TOKEN`, deploy as Web app, Execute as Me, Anyone, then put the URL/token in `config.js`). Keep `ENTRY`/`FORM_URL` in sync between writeback.js and Code.gs and re-read VisitDetails.html if the owner edits the form. Risk: the form/pipeline is owned by someone else; if it changes, direct mode fails silently (opaque response), so use the relay to see errors.
-3. **Quick-log Undo** only un-marks locally; a form submission cannot be withdrawn. To correct, submit Visit Details again.
-4. **Performance at ~45k rows:** `applyFilters` recreates every marker (marker clustering / viewport rendering); debounce the filter name input.
-5. **Offline route list without the map** (render the route sheet from localStorage before Maps loads).
-6. **PWA polish:** real icons (current ones are placeholders); one source of truth for version strings.
-7. **Cluster empty state** should mention an active filter.
-8. **Saved places** for start/end; **step 7** walk/drive path coloring (needs per-leg modes).
-9. **Ongoing:** keep both API keys HTTP-referrer restricted; keep the screenshot-privacy rule above.
+1. **Push and test on a phone.** Round 6 (0.18.5-0.20.0) was developed without a browser; walk through: quick-log double tap and Undo, Optimize twice (logged stop not re-offered), mid-route Optimize choice, offline reload with a saved route, Refresh data, saved places as start/end, travel mode setting, filters, update toast after a deploy.
+2. **6.10 Advanced Markers + clustering** is built on branch `claude/marker-clustering` (v0.21.0) and untested (the Maps key only loads from the GitHub Pages domain). Verify on the deployed branch/preview: popup opens, pins anchor correctly, numbered route dots are centred, clusters appear when zoomed out, filter apply is fast with "All". Then merge into `main`. The Map ID lives in `config.js` (`mapId`); it is not a secret.
+3. **6.23 walk/drive path coloring** stays deferred (needs per-leg modes).
+4. **Quick-log risk:** the form/pipeline is owned by someone else; if it changes, direct mode fails silently (opaque response). `apps-script/Code.gs` remains an optional relay for confirmed delivery.
+5. **Ongoing (owner, Cloud Console):** keep both API keys HTTP-referrer restricted, add per-key API restrictions and a daily Routes API quota cap; keep the screenshot-privacy rule above.
 
-Items 4–8 are folded into **Round 6** below, which is the ordered plan to work from next.
+Round 6 below is the ordered plan that was worked through; every item is DONE except 6.10 (on the branch above) and 6.23 (deferred).
 
-## Round 6: code review findings (collected at 0.18.4, build in this order)
+## Round 6: code review findings (collected at 0.18.4; DONE 0.18.5-0.20.0 except 6.10 on branch `claude/marker-clustering` = 0.21.0, and 6.23 deferred)
 
 Order rule: bugs that lose or misrecord visits first, then performance at ~45k rows, then reliability/offline, then maintainability, then features. Each item is one release unless marked otherwise. Sizes: S < 1h, M a few hours, L a day+.
 
@@ -273,7 +271,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 - **Fix:** at load, store `loc._name` (lowercase), `loc._sts` (lowercase), `loc._visitMs` (parsed once, NaN → null). Use them in `matchesFilters` and `getStopsInBounds` (numeric bounds compare instead of `LatLng`). Debounce the name input's count by 200 ms. Update `_visitMs` wherever `visitdate` changes (quick-log, 6.2 ledger).
 - **Verify:** typing in the name field stays smooth on a phone (Performance panel: each keystroke < 16 ms after debounce); counts unchanged vs before.
 
-### 6.10 Marker rendering at 45k rows
+### 6.10 Marker rendering at 45k rows  [BUILT on branch claude/marker-clustering, 0.21.0; needs phone test before merging to main]
 - **Problem:** `applyFilters` destroys and recreates every marker (`clearMarkers` + `setLocations`), creates a new InfoWindow each time, and uses `google.maps.Marker`, which Google deprecated in Feb 2024 in favor of `AdvancedMarkerElement`. With "All" filters this is tens of thousands of DOM/canvas markers: slow first paint and filter apply, high memory on phones.
 - **Fix:** switch to `AdvancedMarkerElement` (needs a Map ID; add `mapId` to config, load `marker` library) with the existing paddle icons as `<img>` content, plus `@googlemaps/markerclusterer` (self-host in `vendor/`, add to SW shell) so zoomed-out views show cluster bubbles. Create markers once at load, keyed by `db:rowid`; filters only add/remove from the clusterer. One shared InfoWindow. Route numbered markers and start/end markers move to Advanced Markers too (same zIndex rules).
 - **Verify:** "All" filters load and pan smoothly on a mid-range phone; filter apply < 1 s; popup, Visit Details and route markers unchanged; fitBounds still works (the `count < 2000` guard can go).
