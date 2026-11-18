@@ -11,9 +11,8 @@ const SYNC_TOKEN_KEY = 'jowla-sync-token';
 const QUICKLOG_KEY = 'jowla-quicklog';
 const QUEUE_KEY = 'jowla-write-queue';
 // Keep in sync with FORM_URL / ENTRY in apps-script/Code.gs (and VisitDetails.html).
-const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe_TQfBBhpLky9XyTz0SuSsJpcgfF61pS8onUX4RgQxEITOpA/formResponse';
-const ENTRY = { db: 'entry.647159166', rowid: 'entry.589985326', name: 'entry.459245489',
-  code: 'entry.607683347', status: 'entry.1275295467', lang: 'entry.2108730671', comments: 'entry.322317336' };
+const FORM_URL = window.JOWLA_CONFIG.formUrl;
+const ENTRY = window.JOWLA_CONFIG.entry;
 const QUICK_CODES = ['No Response', 'Left Message', 'Gave Targheeb'];
 
 // Optional relay: owner sets these once in config.js; end users never see or type them.

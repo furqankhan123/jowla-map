@@ -119,7 +119,8 @@ function initialiseMap() {
   var ff = document.getElementById('filter-fab');
   if (ff) ff.addEventListener('click', openFilterSheet);
 
-  var SHEET_URL = "https://sheets.googleapis.com/v4/spreadsheets/1U7JJDnTvClhdpHCje29uLwTNCiBhdPfUPxzChbxoXNQ/values/DFWDB!A2:V?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ";
+  var C = window.JOWLA_CONFIG;
+  var SHEET_URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + C.sheetId + '/values/' + C.sheetRange + '?key=' + C.sheetsKey;
 
   var lastLoad = 0;
   function onData(data, isRefresh) {

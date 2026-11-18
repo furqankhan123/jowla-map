@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.8]
+- Single config.js now holds the API keys, sheet, form and version; Maps loads from config; tools/bump-version.js bumps every version string.
+
 ## [0.19.7]
 - If Google Maps cannot load (offline), the saved route list, Go links, Log and done toggles still appear after a few seconds.
 

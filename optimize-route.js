@@ -20,7 +20,7 @@ try {
 function saveOpts() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(opts)); } catch (e) {}
 }
-const API_KEY = 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ';
+const API_KEY = window.JOWLA_CONFIG.apiKey;
 
 
 let currentPolyline = null;
@@ -71,7 +71,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.19.7';
+const APP_VERSION = window.JOWLA_CONFIG.version;
 
 let toastTimer = null;
 function showToast(msg, o) {
