@@ -47,6 +47,36 @@ function locateUser() {
   }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
 }
 
+/* Local visit ledger: visits logged on this device, so they are not offered again
+   before the sheet catches up. { "<db>:<rowid>": "<ISO date>" }, pruned after 30 days. */
+var LEDGER_KEY = 'jowla-local-visits';
+function readLedger() {
+  try { return JSON.parse(localStorage.getItem(LEDGER_KEY) || '{}') || {}; } catch (e) { return {}; }
+}
+function saveLedger(l) { try { localStorage.setItem(LEDGER_KEY, JSON.stringify(l)); } catch (e) {} }
+function ledgerKey(s) { return s.db + ':' + s.rowid; }
+function mergeLedger(loc, ledger) {
+  var k = ledgerKey(loc), iso = ledger[k];
+  if (!iso) return;
+  var ms = Date.parse(iso), sheetMs = Date.parse(loc.visitdate);
+  if (isNaN(ms) || Date.now() - ms > 30 * 864e5 || (!isNaN(sheetMs) && sheetMs >= ms - 864e5)) { delete ledger[k]; return; }
+  loc.visitdate = new Date(ms).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+window.ledgerRecord = function (stop, on) {
+  if (!stop || stop.rowid == null) return;
+  var l = readLedger(), k = ledgerKey(stop);
+  var loc = (window.locations || []).find(function (x) { return ledgerKey(x) === k; });
+  if (on) {
+    l[k] = new Date().toISOString();
+    if (loc && loc._prevVisit === undefined) loc._prevVisit = loc.visitdate || '';
+    if (loc) loc.visitdate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  } else {
+    delete l[k];
+    if (loc && loc._prevVisit !== undefined) { loc.visitdate = loc._prevVisit; loc._prevVisit = undefined; }
+  }
+  saveLedger(l);
+};
+
 function initialiseMap() {
   $.urlParam = function(name){
     var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
@@ -54,6 +84,7 @@ function initialiseMap() {
     return results[1] || 0;
   };
 
+  var ledger = readLedger();
   $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1U7JJDnTvClhdpHCje29uLwTNCiBhdPfUPxzChbxoXNQ/values/DFWDB!A2:V?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ", function(data) {
     $(data.values).each(function() {
       var location = {};
@@ -74,8 +105,10 @@ function initialiseMap() {
       location.visitdate = this[16];
       location.rowid = this[21];
       if (isDoNotVisit(location)) return;
+      mergeLedger(location, ledger);
       locations.push(location);
     });
+    saveLedger(ledger);
     console.log('locations size (after DNV filter) ' + locations.length);
     if (!navigator.onLine && window.showToast) showToast('Offline — showing saved data');
 

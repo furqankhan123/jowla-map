@@ -125,7 +125,7 @@ function quickLog(stop, code) {
   const date = sheetDate();
   // Reflect immediately so the recent-visit filter skips it on the next Optimize.
   const loc = (window.locations || []).find((l) => String(l.rowid) === String(stop.rowid) && String(l.db) === String(stop.db));
-  if (loc) { loc.visitcode = code; loc.visitdate = date; }
+  if (loc) { if (loc._prevVisit === undefined) loc._prevVisit = loc.visitdate || ''; loc.visitcode = code; }
   const q = readQueue();
   q.push({
     id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), rowid: stop.rowid,

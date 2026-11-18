@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.6]
+- Visits logged on this device are remembered locally (jowla-local-visits, 30 days) so Optimize does not offer them again, even after a reload; Undo removes them.
+
 ## [0.18.5]
 - Quick-log: double taps no longer log the next stop (1.5 s cooldown, 10 s per-stop guard, next chips fade in).
 

@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.18.5';
+const APP_VERSION = '0.18.6';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -343,12 +343,13 @@ function stopLabel(i) {
 function markStopDone(s) {
   if (!currentRoute || !s || s.done) return;
   s.done = true;
+  if (window.ledgerRecord) ledgerRecord(s, true);
   persistRoute();
   updateDoneUi();
   const stops = currentRoute.stops;
   const next = stops.find((x) => !x.done);
   const msg = `Stop ${stops.indexOf(s) + 1} logged · ` + (next ? `Next: ${stopLabel(stops.indexOf(next))}` : 'All done 🎉');
-  showToast(msg, { action: { label: 'Undo', onClick: () => { s.done = false; persistRoute(); updateDoneUi(); } } });
+  showToast(msg, { action: { label: 'Undo', onClick: () => { s.done = false; if (window.ledgerRecord) ledgerRecord(s, false); persistRoute(); updateDoneUi(); } } });
 }
 window.markRouteStopDone = function (loc) {
   if (!currentRoute || !loc) return;

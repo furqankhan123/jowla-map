@@ -205,7 +205,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 | # | Item | Type | Size | Depends on |
 |---|------|------|------|-----------|
 | 6.1 | Quick-log double tap logs the next stop (DONE 0.18.5) | bug | S | - |
-| 6.2 | Visited stops come back in the next Optimize | bug | M | - |
+| 6.2 | Visited stops come back in the next Optimize (DONE 0.18.6) | bug | M | - |
 | 6.3 | Quick-log real Undo window | bug | S | 6.2 |
 | 6.4 | ETAs ignore progress | bug | S | - |
 | 6.5 | Optimize silently replaces a route in progress; "Continue from here" | bug/UX | S | 6.2 |
