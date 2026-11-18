@@ -90,6 +90,8 @@ async function flushQueue() {
     let q = readQueue();
     while (q.length) {
       const item = q[0];
+      const wait = (item.sendAfter || 0) - Date.now();
+      if (wait > 0) { setTimeout(flushQueue, wait + 50); break; }
       let ok = false, fatal = false;
       if (!hydrateItem(item)) {
         fatal = true;
@@ -114,6 +116,7 @@ async function flushQueue() {
 const recentLogs = {};
 let cooldownUntil = 0;
 const COOLDOWN_MS = 1500;
+const UNDO_MS = 7000;
 function quickLog(stop, code) {
   if (!stop || stop.rowid == null) return;
   const now = Date.now();
@@ -125,19 +128,41 @@ function quickLog(stop, code) {
   const date = sheetDate();
   // Reflect immediately so the recent-visit filter skips it on the next Optimize.
   const loc = (window.locations || []).find((l) => String(l.rowid) === String(stop.rowid) && String(l.db) === String(stop.db));
-  if (loc) { if (loc._prevVisit === undefined) loc._prevVisit = loc.visitdate || ''; loc.visitcode = code; }
+  if (loc) { if (loc._prevVisit === undefined) loc._prevVisit = loc.visitdate || ''; loc._prevCode = loc.visitcode; loc.visitcode = code; }
   const q = readQueue();
   q.push({
     id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), rowid: stop.rowid,
     db: (loc && loc.db) || stop.db, name: (loc && loc.name) || stop.name,
-    sts: (loc && loc.sts) || stop.sts || '', visitcode: code, visitdate: date
+    sts: (loc && loc.sts) || stop.sts || '', visitcode: code, visitdate: date,
+    sendAfter: now + UNDO_MS
   });
   writeQueue(q);
   if (window.markRouteStopDone) markRouteStopDone(stop);
   if (window.showToast) showToast(navigator.onLine ? 'Saving: ' + code : 'Offline: will save when back online');
-  flushQueue().then(() => {
+  setTimeout(() => flushQueue().then(() => {
     if (!readQueue().length && window.showToast && navigator.onLine) showToast('Submitted');
-  });
+  }), UNDO_MS + 100);
+}
+
+/** Undo a quick-log: cancel it if still queued and not yet due; else explain. */
+function quickLogUndo(stop) {
+  if (!stop) return;
+  const q = readQueue();
+  const i = q.findIndex((x) => String(x.rowid) === String(stop.rowid) && String(x.db) === String(stop.db));
+  delete recentLogs[stop.db + ':' + stop.rowid];
+  if (i < 0) {
+    if (window.showToast && stop.rowid != null && (stop.visitLogged)) showToast('Already submitted: use Visit Details to correct');
+    return;
+  }
+  if ((q[i].sendAfter || 0) <= Date.now()) {
+    if (window.showToast) showToast('Already submitted: use Visit Details to correct');
+    return;
+  }
+  q.splice(i, 1);
+  writeQueue(q);
+  const loc = (window.locations || []).find((l) => String(l.rowid) === String(stop.rowid) && String(l.db) === String(stop.db));
+  if (loc && loc._prevCode !== undefined) { loc.visitcode = loc._prevCode; loc._prevCode = undefined; }
+  if (window.refreshSyncStatus) refreshSyncStatus();
 }
 
 /** Called by updateDoneUi to append quick-log chips under the primary buttons. */
@@ -202,6 +227,7 @@ window.addEventListener('load', () => setTimeout(flushQueue, 1500));
 
 window.buildFormBody = buildFormBody;
 window.quickLog = quickLog;
+window.quickLogUndo = quickLogUndo;
 window.renderQuickLog = renderQuickLog;
 window.syncSettingsHtml = syncSettingsHtml;
 window.bindSyncSettings = bindSyncSettings;

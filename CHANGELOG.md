@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.8]
+- Quick-log holds each submission 7 s; Undo within that window cancels it (nothing is sent). After that, Undo says to use Visit Details.
+
 ## [0.18.7]
 - Visited filter "More than 30/90/180 days" now includes never-visited stops (owner decision, plan 6.8).
 
