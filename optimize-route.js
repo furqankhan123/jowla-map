@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.18.6';
+const APP_VERSION = '0.18.7';
 
 let toastTimer = null;
 function showToast(msg, o) {

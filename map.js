@@ -159,17 +159,14 @@ function matchesFilters(loc, f) {
   }
   if (f.name && !(loc.name || '').toLowerCase().includes(f.name.toLowerCase())) return false;
   if (f.visited) {
-    if (!loc.visitdate) {
-      if (f.visited !== '0') return false;
-    } else {
-      var visit = new Date(loc.visitdate);
-      if (!isNaN(visit.getTime())) {
-        var days = (now - visit) / (1000 * 60 * 60 * 24);
-        if (f.visited === '0') return false;
-        if (f.visited === '1' && days < 30) return false;
-        if (f.visited === '3' && days < 90) return false;
-        if (f.visited === '6' && days < 180) return false;
-      }
+    // Never-visited (or unparseable date) counts as "not visited in the last N days".
+    var visit = loc.visitdate ? new Date(loc.visitdate) : null;
+    if (visit && !isNaN(visit.getTime())) {
+      var days = (now - visit) / (1000 * 60 * 60 * 24);
+      if (f.visited === '0') return false;
+      if (f.visited === '1' && days < 30) return false;
+      if (f.visited === '3' && days < 90) return false;
+      if (f.visited === '6' && days < 180) return false;
     }
   }
   return true;

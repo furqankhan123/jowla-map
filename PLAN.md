@@ -211,7 +211,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 | 6.5 | Optimize silently replaces a route in progress; "Continue from here" | bug/UX | S | 6.2 |
 | 6.6 | Data load failure = blank page; map waits on data | bug | S | - |
 | 6.7 | Stale custom-start UI text and dead code | cleanup | S | - |
-| 6.8 | "More than N days" filter drops never-visited stops (owner decision) | bug? | S | - |
+| 6.8 | "More than N days" filter drops never-visited stops (DONE 0.18.7) | bug? | S | - |
 | 6.9 | Precompute row fields + debounce filters | perf | S | - |
 | 6.10 | Marker rendering at 45k rows (Advanced Markers + clustering) | perf | L | 6.9 |
 | 6.11 | Fewer Routes API calls per Optimize | perf/cost | S | - |

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.7]
+- Visited filter "More than 30/90/180 days" now includes never-visited stops (owner decision, plan 6.8).
+
 ## [0.18.6]
 - Visits logged on this device are remembered locally (jowla-local-visits, 30 days) so Optimize does not offer them again, even after a reload; Undo removes them.
 
