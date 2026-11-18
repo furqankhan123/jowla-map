@@ -25,6 +25,10 @@ The loop this targets, and how each feature shortens it:
 - Mobile-first bottom sheet (peek/half/full); a list button reopens a closed route sheet.
 - Quick-log chips (No Response / Left Message / Gave Targheeb) under the next stop submit the public Visit Details Google Form directly (no setup, offline queue); the sheet records the visit via the owner's existing form pipeline.
 - Map camera control shown bottom-left on desktop (hidden on touchscreens).
+- Quick-log has a 7 s Undo window and a double-tap guard; logged stops are remembered locally (30 days) so Optimize does not offer them again.
+- Re-plan the remaining stops from your position, start a new route, or "Find more stops" when a route is finished; ETAs follow your progress.
+- Saved places (this browser only) as route start or end; Auto/Walk/Drive travel mode; Refresh data without reloading.
+- Offline: the saved route list works without the map; the service worker keeps the last sheet data across updates and shows a "New version available" toast.
 
 ## A typical session
 1. Open `newindex.html`, tap **Optimize**.
@@ -35,11 +39,13 @@ The loop this targets, and how each feature shortens it:
 ## Files
 - `index.html`: filters home page
 - `newindex.html`: map page
-- `map.js`: sheet loading, markers, infowindow
+- `map.js`: sheet loading, filters, markers, infowindow
+- `logic.js`: pure logic (filters, ETAs, tour estimate, travel mode, clusters, haversine), unit tested
 - `optimize-route.js`: Optimize, route panel, Log → Next, end point, settings
 - `segments.js`, `nav.js`: Google/Apple URL builders (tested in `tests/`) and the preferred-app helper
-- `cluster.js`, `writeback.js`, `tour.js`, `config.js`, `sw.js`: clusters, quick-log sync, tour, deployment config, service worker
+- `cluster.js`, `writeback.js`, `tour.js`, `config.js`, `sw.js`: clusters, quick-log sync, tour, deployment config (keys, sheet, form, Map ID, version), service worker
 - `apps-script/Code.gs`: optional relay for confirmed quick-log delivery (not needed; direct mode works)
+- `tools/bump-version.js` (releases), `tools/make-icons.py` (PWA icons), `icons/`, `vendor/` (self-hosted markerclusterer on the 6.10 branch)
 - `map.css`: styles
 - `PLAN.md`: roadmap and **session handoff** (start here to continue work)
 - `CHANGELOG.md`: release notes
@@ -48,7 +54,7 @@ The loop this targets, and how each feature shortens it:
 Static hosting only; push to GitHub Pages. `map.js` reads sheet range `DFWDB!A2:V` with these columns (0-indexed): 0 db, 2 id, 3 name, 4 address, 5 latitude, 6 longitude, 7 city, 8 zip, 11 unit, 12 marker, 13 status, 14 visit code, 15 comments, 16 visit date, 21 row id. The Maps/Sheets API key must stay HTTP-referrer restricted.
 
 ## Tests
-`node tests/segments.test.js`
+`node tests/run.js` runs `node --check` on every JS file and all `tests/*.test.js` (also run by GitHub Actions on every push).
 
 ## Releasing
-Bump `APP_VERSION` in `optimize-route.js` and the `?v=` strings in `newindex.html`, update `CHANGELOG.md`, then tag `vX.Y.Z` (annotated) and push with `--follow-tags`.
+`node tools/bump-version.js X.Y.Z "changelog line" ["PLAN table row to mark DONE"]` updates `config.js` (version), every `?v=` in the HTML files, `CACHE_VERSION` in `sw.js`, `CHANGELOG.md` and optionally `PLAN.md`. Then run `node tests/run.js`, commit, tag `vX.Y.Z` (annotated) and push with `--follow-tags`. After a deploy the service worker offers a "New version available" Reload toast.
