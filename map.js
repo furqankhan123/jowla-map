@@ -334,7 +334,7 @@ function createMarker(map, location, infowindow) {
     icon: { url: markerurl, scaledSize: new google.maps.Size(40, 40) }
   });
   google.maps.event.addListener(marker, 'click', function() {
-    window.__pendingStart = location;
+    window.__popupLoc = location;
     var e = escapeHtml;
     var nb = navButtons(location.latitude, location.longtitude);
     var detailsUrl = visitDetailsUrl(location);
@@ -345,7 +345,7 @@ function createMarker(map, location, infowindow) {
       (location.comments ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +
       (location.visitdate ? '<p><strong>Last visit:</strong> ' + e(location.visitdate) + '</p>' : '') +
       '<a class="iw-btn" href="' + e(nb.primary.url) + '" target="_blank" rel="noopener">Navigate (' + nb.primary.label + ')</a>' +
-      '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__pendingStart);}">Visit Details</a>' +
+      '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__popupLoc);}">Visit Details</a>' +
       '</div>');
     infowindow.open(map, marker);
   });

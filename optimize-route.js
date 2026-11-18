@@ -28,14 +28,6 @@ let routeMarkers = [];
 let startMarker = null;
 let mapRef = null;
 
-/** Called from the marker info window "Set as start" link. */
-function setRouteStart(loc) {
-  if (!loc || !mapRef) return;
-  opts.customStart = { lat: loc.latitude, lng: loc.longtitude, name: loc.name || loc.address || 'Custom start' };
-  saveOpts();
-  drawStartMarker();
-  refreshSettingsUi();
-}
 function clearRouteStart() {
   opts.customStart = null;
   saveOpts();
@@ -79,7 +71,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.19.1';
+const APP_VERSION = '0.19.2';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -457,7 +449,6 @@ function renderRoute(map, route, fresh) {
   showRoutePanel(route.stops, route.totalMins, route.travelMode, route.start, route.legSecs, route.end);
   drawPolyline(map, route.encoded);
   drawNumberedMarkers(map, route.stops);
-  updateDoneUi();
 }
 
 function restoreLastRoute(map) {
@@ -634,7 +625,7 @@ function refreshSettingsUi() {
       <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
       <div class="start-row">Start: ${opts.customStart
         ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
-        : 'GPS (or tap a pin → “Set as start”)'}</div>
+        : 'your location'}</div>
       <button id="opt-rerun" type="button" class="nav-btn primary">Optimize</button>
       ${window.syncSettingsHtml ? syncSettingsHtml() : ''}
       <button id="opt-tour" type="button" class="nav-btn set-end">Replay tour</button>
@@ -841,6 +832,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
       if (ev.target.closest('a')) return;
       if (ev.target.closest('.done-btn')) {
         s.done = !s.done;
+        if (window.ledgerRecord) ledgerRecord(s, s.done);
         persistRoute();
         updateDoneUi();
         return;
@@ -874,4 +866,3 @@ window.clearRoute = function () {
   document.body.classList.remove('sheet-expanded', 'route-closed');
 };
 window.addOptimizeControl = addOptimizeControl;
-window.setRouteStart = setRouteStart;

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.2]
+- Removed leftover Set as start text and code; settings show your location as the start (a saved custom start can still be cleared); done toggle on a row now also records the visit locally; route renders once.
+
 ## [0.19.1]
 - Map appears immediately at your last view with a Loading stops message; a failed data load shows an error with Retry instead of a blank page.
 
