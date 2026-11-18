@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.11]
+- index.html adds any city found in the sheet data that is missing from its static list (works offline from the cached data).
+
 ## [0.19.10]
 - Pure logic moved to logic.js with unit tests (filters, ETAs, tour estimate, clusters, haversine); tests/run.js plus a GitHub Actions workflow run syntax checks and all tests.
 

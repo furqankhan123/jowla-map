@@ -221,7 +221,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 | 6.15 | One config + one version string (DONE 0.19.8) | maintenance | S | - |
 | 6.16 | Remove jQuery (DONE 0.19.9) | maintenance | S | 6.15 |
 | 6.17 | Unit tests for pure logic + CI (DONE 0.19.10) | maintenance | M | 6.15 |
-| 6.18 | Shared city list for index.html | maintenance | S | - |
+| 6.18 | Shared city list for index.html (DONE 0.19.11) | maintenance | S | - |
 | 6.19 | Travel mode chosen from stop spacing, not distance from start | feature | S | - |
 | 6.20 | Cluster empty state mentions active filters | feature | S | - |
 | 6.21 | Real PWA icons | feature | S | - |
