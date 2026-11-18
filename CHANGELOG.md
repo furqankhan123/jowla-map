@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.21.4]
+- Fix offline data: the service worker now actually saves the sheet response (the old streaming write failed silently), and a failed data load still restores the saved route list.
+
 ## [0.21.3]
 - Service worker installs fetch fresh copies (bypassing the browser HTTP cache) so an update never caches stale files.
 

@@ -1,5 +1,5 @@
 /* Jowla Map service worker. Bump CACHE_VERSION to invalidate caches. */
-const CACHE_VERSION = 'v0.21.3';
+const CACHE_VERSION = 'v0.21.4';
 const SHELL_CACHE = 'jowla-shell-' + CACHE_VERSION;
 const DATA_CACHE = 'jowla-data'; // unversioned: offline data survives deploys
 const SHELL = [
@@ -35,7 +35,13 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(req)
         .then((res) => {
-          if (res.ok) { const copy = res.clone(); caches.open(DATA_CACHE).then((c) => c.put(req, copy)); }
+          if (res.ok) {
+            // Buffer the body first: streaming a clone of this ~18 MB response into Cache.put failed silently.
+            const type = res.headers.get('content-type') || 'application/json';
+            e.waitUntil(res.clone().arrayBuffer()
+              .then((buf) => caches.open(DATA_CACHE).then((c) => c.put(req, new Response(buf, { headers: { 'content-type': type } }))))
+              .catch(() => {}));
+          }
           return res;
         })
         .catch(() => caches.match(req))

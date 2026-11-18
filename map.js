@@ -135,6 +135,12 @@ function initialiseMap() {
   var SHEET_URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + C.sheetId + '/values/' + C.sheetRange + '?key=' + C.sheetsKey;
 
   var lastLoad = 0;
+  var controlsReady = false;
+  function initControls() {
+    if (controlsReady) return;
+    controlsReady = true;
+    if (typeof addOptimizeControl === 'function') addOptimizeControl(map);
+  }
   function fetchSheet() {
     return fetch(SHEET_URL).then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   }
@@ -175,9 +181,7 @@ function initialiseMap() {
       return;
     }
     applyUrlFilters();
-    if (typeof addOptimizeControl === 'function') {
-      addOptimizeControl(map);
-    }
+    initControls();
   }
 
   /** Re-fetch the sheet, merge the local ledger, re-apply current filters; route and viewport untouched. */
@@ -197,6 +201,7 @@ function initialiseMap() {
   function loadData() {
     if (window.showToast) showToast('Loading stops…', { sticky: true });
     fetchSheet().then(function(d) { onData(d); }).catch(function() {
+      initControls(); // still restore the saved route and its list without stop data
       if (window.showToast) showToast('Could not load stops', { type: 'error', sticky: true, action: { label: 'Retry', onClick: loadData } });
     });
   }
