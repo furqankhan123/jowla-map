@@ -148,9 +148,26 @@
     return clusters.sort((a, b) => b.score - a.score).slice(0, CLUSTER_TOP_N);
   }
 
+  /** Travel mode from stop spacing: WALK when the median nearest-neighbour gap is < 250 m and the
+      set spans < 1.5 km; `pref` 'WALK' / 'DRIVE' overrides, anything else means auto. */
+  function pickTravelMode(cands, pref) {
+    if (pref === 'WALK' || pref === 'DRIVE') return pref;
+    if (!cands || cands.length < 2) return 'DRIVE';
+    var pts = cands.map(function (c) { return { lat: c.latitude, lng: c.longtitude }; });
+    var gaps = pts.map(function (p, i) {
+      var best = Infinity;
+      pts.forEach(function (q, j) { if (i !== j) best = Math.min(best, haversine(p, q)); });
+      return best;
+    }).sort(function (a, b) { return a - b; });
+    var median = gaps[Math.floor(gaps.length / 2)];
+    var diameter = 0;
+    pts.forEach(function (p, i) { for (var j = i + 1; j < pts.length; j++) diameter = Math.max(diameter, haversine(p, pts[j])); });
+    return median < 0.25 && diameter < 1.5 ? 'WALK' : 'DRIVE';
+  }
+
   var api = {
     parseCityParam: parseCityParam, matchesFilters: matchesFilters, filtersToQuery: filtersToQuery,
-    computeEtas: computeEtas, estimateTourMins: estimateTourMins, haversine: haversine, findClusters: findClusters
+    computeEtas: computeEtas, estimateTourMins: estimateTourMins, haversine: haversine, findClusters: findClusters, pickTravelMode: pickTravelMode
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else { Object.keys(api).forEach(function (k) { root[k] = api[k]; }); }

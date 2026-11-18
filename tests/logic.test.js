@@ -81,4 +81,16 @@ assert.strictEqual(cl[0].count, 6);
 assert.deepStrictEqual(L.findClusters(scattered, 0.4, 4), []);
 assert.deepStrictEqual(L.findClusters(dense.slice(0, 3), 0.4, 4), []);
 
+// --- pickTravelMode (plan 6.19): spacing, not distance from start
+const tight = [];
+for (let i = 0; i < 8; i++) tight.push({ latitude: 40 + i * 0.0006, longtitude: 50 });
+const spread = [];
+for (let i = 0; i < 8; i++) spread.push({ latitude: 40 + i * 0.01, longtitude: 50 });
+assert.strictEqual(L.pickTravelMode(tight), 'WALK');
+assert.strictEqual(L.pickTravelMode(spread), 'DRIVE');
+assert.strictEqual(L.pickTravelMode(tight, 'DRIVE'), 'DRIVE');
+assert.strictEqual(L.pickTravelMode(spread, 'WALK'), 'WALK');
+assert.strictEqual(L.pickTravelMode(tight, 'auto'), 'WALK');
+assert.strictEqual(L.pickTravelMode([tight[0]]), 'DRIVE');
+
 console.log('logic ok');

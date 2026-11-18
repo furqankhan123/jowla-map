@@ -5,7 +5,6 @@
 
 const AVG_VISIT_MINS = 3;
 const MAX_STOPS = 15;
-const DENSE_THRESHOLD_KM = 0.5;
 const BOUNDS_MARGIN = 0.15;
 const STORAGE_KEY = 'jowla-optimize-settings';
 const ROUTE_KEY = 'jowla-last-route';
@@ -13,7 +12,7 @@ const ROUTE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_FIT_ITERATIONS = 3;
 
 // User-adjustable settings (persisted)
-const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null };
+const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, travelPref: 'auto' };
 try {
   Object.assign(opts, JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'));
 } catch (e) {}
@@ -214,7 +213,7 @@ async function runOptimization(map, start, bounds, source) {
   // tour fits the target, so the first Routes call usually already fits.
   if (opts.targetMins) {
     while (candidates.length > 2) {
-      const mode = isDenseCluster(candidates) ? 'WALK' : 'DRIVE';
+      const mode = pickTravelMode(candidates, opts.travelPref);
       if (estimateTourMins(start, candidates, mode) <= opts.targetMins) break;
       candidates = candidates.slice(0, candidates.length - 1);
     }
@@ -250,7 +249,7 @@ async function runOptimization(map, start, bounds, source) {
 }
 
 async function requestRoute(start, candidates, endPoint) {
-  const travelMode = isDenseCluster(candidates) ? 'WALK' : 'DRIVE';
+  const travelMode = pickTravelMode(candidates, opts.travelPref);
   // The end is always a location (custom end, else back to the start), never a stop.
   // The end is the start (round trip) unless a stop was chosen as the final stop.
   const endPt = endPoint ? { lat: endPoint.lat, lng: endPoint.lng } : { lat: start.lat, lng: start.lng };
@@ -473,13 +472,6 @@ function restoreLastRoute(map) {
 }
 
 
-function isDenseCluster(points) {
-  if (!points.length) return false;
-  const close = points.filter((p) => p.dist < DENSE_THRESHOLD_KM).length;
-  return close / points.length > 0.6;
-}
-
-
 function drawPolyline(map, encoded) {
   if (currentPolyline) currentPolyline.setMap(null);
   if (!encoded || !google.maps.geometry) return;
@@ -623,6 +615,7 @@ function refreshSettingsUi() {
       <label>Target time ${sel('opt-target', opts.targetMins, [[30, '30 min'], [45, '45 min'], [60, '60 min'], [0, 'No limit']])}</label>
       <label>Skip visited within ${sel('opt-days', opts.recentDays, [[30, '30 days'], [90, '90 days'], [180, '180 days']])}</label>
       <label class="chk"><input type="checkbox" id="opt-recent"${opts.includeRecent ? ' checked' : ''}> Include recently visited</label>
+      <label>Travel mode ${sel('opt-mode', opts.travelPref, [['auto', 'Auto'], ['WALK', 'Walk'], ['DRIVE', 'Drive']])}</label>
       <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
       <div class="start-row">Start: ${opts.customStart
         ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
@@ -636,6 +629,7 @@ function refreshSettingsUi() {
 
   document.getElementById('opt-target').addEventListener('change', (e) => { opts.targetMins = parseInt(e.target.value, 10); saveOpts(); });
   document.getElementById('opt-days').addEventListener('change', (e) => { opts.recentDays = parseInt(e.target.value, 10); saveOpts(); });
+  document.getElementById('opt-mode').addEventListener('change', (e) => { opts.travelPref = e.target.value; saveOpts(); });
   document.getElementById('opt-recent').addEventListener('change', (e) => { opts.includeRecent = e.target.checked; saveOpts(); });
   document.getElementById('opt-nav').addEventListener('change', (e) => {
     setNavPref(e.target.value);
