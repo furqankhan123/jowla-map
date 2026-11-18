@@ -472,22 +472,6 @@ function restoreLastRoute(map) {
   } catch (e) {}
 }
 
-/** Rough tour time: nearest-neighbour path from start and back (haversine x 1.3 detour) + visits. */
-function estimateTourMins(start, cands, mode) {
-  const kmh = mode === 'WALK' ? 4.5 : 30;
-  let km = 0, cur = { lat: start.lat, lng: start.lng };
-  const left = cands.map((c) => ({ lat: c.latitude, lng: c.longtitude }));
-  while (left.length) {
-    let bi = 0, bd = Infinity;
-    for (let i = 0; i < left.length; i++) {
-      const d = haversine(cur, left[i]);
-      if (d < bd) { bd = d; bi = i; }
-    }
-    km += bd; cur = left.splice(bi, 1)[0];
-  }
-  km += haversine(cur, { lat: start.lat, lng: start.lng });
-  return (km * 1.3 / kmh) * 60 + cands.length * AVG_VISIT_MINS;
-}
 
 function isDenseCluster(points) {
   if (!points.length) return false;
@@ -495,17 +479,6 @@ function isDenseCluster(points) {
   return close / points.length > 0.6;
 }
 
-function haversine(a, b) {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const x =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a.lat * Math.PI) / 180) *
-      Math.cos((b.lat * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(x));
-}
 
 function drawPolyline(map, encoded) {
   if (currentPolyline) currentPolyline.setMap(null);
@@ -753,19 +726,6 @@ function fmtTime(d) {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-/** ETAs from now, starting at the first undone stop; done stops get null. */
-function computeEtas(stops, legSecs, now) {
-  const etas = []; let t = now; let endEta = null;
-  const hasLegs = legSecs && legSecs.length;
-  stops.forEach((s, i) => {
-    if (s.done) { etas.push(null); return; }
-    t += ((legSecs && legSecs[i]) || 0) * 1000;
-    etas.push(hasLegs ? t : null);
-    t += AVG_VISIT_MINS * 60 * 1000;
-  });
-  if (legSecs && legSecs.length > stops.length) endEta = t + (legSecs[stops.length] || 0) * 1000;
-  return { etas, endEta };
-}
 function routeSummaryText(route) {
   const modeText = route.travelMode === 'WALK' ? 'walking' : 'driving';
   const left = route.stops.filter((x) => !x.done).length;

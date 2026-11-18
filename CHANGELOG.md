@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.10]
+- Pure logic moved to logic.js with unit tests (filters, ETAs, tour estimate, clusters, haversine); tests/run.js plus a GitHub Actions workflow run syntax checks and all tests.
+
 ## [0.19.9]
 - jQuery removed (fetch plus the existing regex URL parser); old URL filter formats still work.
 

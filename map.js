@@ -192,41 +192,7 @@ function initialiseMap() {
   loadData();
 }
 
-function parseCityParam(raw) {
-  if (!raw || raw === 'null') return null;
-  try {
-    var decoded = decodeURIComponent(raw);
-    // Handles City===%27Princeton%27 or City=='Princeton' or City=Princeton
-    decoded = decoded.replace(/^=+/, '').replace(/^'+|'+$/g, '').trim();
-    return decoded || null;
-  } catch (e) {
-    return raw;
-  }
-}
 
-function matchesFilters(loc, f) {
-  var now = new Date();
-  if (f.city && loc.city !== f.city) return false;
-  if (f.status) {
-    var s = loc._sts;
-    if (f.status === 'S' && s.indexOf('student') === -1) return false;
-    if (f.status === 'K' && s.indexOf('khususi') === -1) return false;
-    if (f.status === 'F' && s.indexOf('follow') === -1) return false;
-    if (f.status === 'W' && s.indexOf('week') === -1) return false;
-  }
-  if (f.name && loc._name.indexOf(f.name.toLowerCase()) === -1) return false;
-  if (f.visited) {
-    // Never-visited (or unparseable date) counts as "not visited in the last N days".
-    if (loc._visitMs != null) {
-      var days = (now - loc._visitMs) / (1000 * 60 * 60 * 24);
-      if (f.visited === '0') return false;
-      if (f.visited === '1' && days < 30) return false;
-      if (f.visited === '3' && days < 90) return false;
-      if (f.visited === '6' && days < 180) return false;
-    }
-  }
-  return true;
-}
 
 var currentFilters = { city: '', status: '', name: '', visited: '' };
 
@@ -253,14 +219,6 @@ function applyFilters(f, keepView) {
 }
 
 /* ---- In-map filter sheet ---- */
-function filtersToQuery(f) {
-  var params = [];
-  if (f.city) params.push('City===' + encodeURIComponent("'" + f.city + "'"));
-  if (f.status) params.push('S=' + f.status);
-  params.push('F=' + encodeURIComponent(f.name || 'Search'));
-  if (f.visited) params.push('P=' + f.visited);
-  return '?' + params.join('&');
-}
 
 function countMatches(f) {
   return locations.filter(function(loc) { return matchesFilters(loc, f); }).length;

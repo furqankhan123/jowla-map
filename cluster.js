@@ -9,58 +9,6 @@ const CLUSTER_MIN_STOPS = 4;
 const CLUSTER_MAX_POINTS = 2000;
 const CLUSTER_TOP_N = 5;
 
-/** stops: [{latitude, longtitude, ...}] -> [{stops, centroid, count, spreadKm}] best first */
-function findClusters(stops, radiusKm, minStops) {
-  radiusKm = radiusKm || CLUSTER_RADIUS_KM;
-  minStops = minStops || CLUSTER_MIN_STOPS;
-  const pts = stops.slice(0, CLUSTER_MAX_POINTS);
-  if (pts.length < minStops) return [];
-
-  // Grid buckets (cell ~ radius) so neighbor lookups stay cheap.
-  const cellLat = radiusKm / 111;
-  const cellLng = radiusKm / (111 * Math.cos((pts[0].latitude * Math.PI) / 180));
-  const key = (la, ln) => Math.floor(la / cellLat) + ',' + Math.floor(ln / cellLng);
-  const grid = new Map();
-  pts.forEach((p, i) => {
-    const k = key(p.latitude, p.longtitude);
-    if (!grid.has(k)) grid.set(k, []);
-    grid.get(k).push(i);
-  });
-  const near = (p) => {
-    const out = [];
-    const cx = Math.floor(p.latitude / cellLat), cy = Math.floor(p.longtitude / cellLng);
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        (grid.get((cx + dx) + ',' + (cy + dy)) || []).forEach((j) => {
-          const q = pts[j];
-          if (haversine({ lat: p.latitude, lng: p.longtitude }, { lat: q.latitude, lng: q.longtitude }) <= radiusKm) out.push(j);
-        });
-      }
-    }
-    return out;
-  };
-
-  const neighbors = pts.map(near);
-  const order = pts.map((_, i) => i).sort((a, b) => neighbors[b].length - neighbors[a].length);
-  const taken = new Array(pts.length).fill(false);
-  const clusters = [];
-
-  order.forEach((seed) => {
-    if (taken[seed]) return;
-    const members = neighbors[seed].filter((j) => !taken[j]);
-    if (members.length < minStops) return;
-    members.forEach((j) => { taken[j] = true; });
-    const group = members.map((j) => pts[j]);
-    const centroid = {
-      lat: group.reduce((s, p) => s + p.latitude, 0) / group.length,
-      lng: group.reduce((s, p) => s + p.longtitude, 0) / group.length
-    };
-    const spreadKm = 2 * Math.max(...group.map((p) => haversine(centroid, { lat: p.latitude, lng: p.longtitude })));
-    clusters.push({ stops: group, centroid, count: group.length, spreadKm, score: group.length - spreadKm });
-  });
-
-  return clusters.sort((a, b) => b.score - a.score).slice(0, CLUSTER_TOP_N);
-}
 
 let clusterCircle = null;
 
