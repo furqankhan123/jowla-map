@@ -2,11 +2,12 @@
    This file is public (GitHub Pages): keep both API keys HTTP-referrer and API restricted.
    `version` is rewritten by tools/bump-version.js (do not edit by hand).
    Keep formUrl / entry in sync with apps-script/Code.gs and VisitDetails.html.
-   Later (plan 6.10): add mapId here for Advanced Markers. */
+   mapId is the Cloud Console Map ID used for Advanced Markers. */
 window.JOWLA_CONFIG = {
-  version: '0.20.0',
+  version: '0.21.0',
   apiKey: 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ',      // Maps JavaScript, Routes, Places (New), Geocoding
   sheetsKey: 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ',   // Sheets (read only)
+  mapId: 'de08d2ec96ce5eb259d881cb',   // Advanced Markers (public, not a secret)
   sheetId: '1U7JJDnTvClhdpHCje29uLwTNCiBhdPfUPxzChbxoXNQ',
   sheetRange: 'DFWDB!A2:V',
   formUrl: 'https://docs.google.com/forms/d/e/1FAIpQLSe_TQfBBhpLky9XyTz0SuSsJpcgfF61pS8onUX4RgQxEITOpA/formResponse',

@@ -1,10 +1,10 @@
 /* Jowla Map service worker. Bump CACHE_VERSION to invalidate caches. */
-const CACHE_VERSION = 'v0.20.0';
+const CACHE_VERSION = 'v0.21.0';
 const SHELL_CACHE = 'jowla-shell-' + CACHE_VERSION;
 const DATA_CACHE = 'jowla-data'; // unversioned: offline data survives deploys
 const SHELL = [
   'index.html', 'newindex.html', 'map.css', 'map.js', 'nav.js', 'tour.js', 'segments.js', 'config.js', 'logic.js', 'optimize-route.js', 'cluster.js', 'writeback.js',
-  'manifest.webmanifest',
+  'manifest.webmanifest', 'vendor/markerclusterer-2.5.3.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'
 ];
 

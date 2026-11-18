@@ -36,6 +36,20 @@ function visitDetailsUrl(loc) {
 }
 window.visitDetailsUrl = visitDetailsUrl;
 
+/** Round "dot" Advanced Marker (user location, route start, numbered stops). */
+function makeDotMarker(map, pos, o) {
+  var d = document.createElement('div');
+  var size = o.size || 22;
+  d.style.cssText = 'width:' + size + 'px;height:' + size + 'px;border-radius:50%;box-sizing:border-box;border:' + (o.border || 2) + 'px solid #fff;' +
+    'background:' + o.color + ';color:#fff;font:bold 12px/1 sans-serif;display:flex;align-items:center;justify-content:center;' +
+    'box-shadow:0 1px 3px rgba(0,0,0,.45);transform:translateY(50%);';
+  if (o.text != null) d.textContent = o.text;
+  return new google.maps.marker.AdvancedMarkerElement({
+    map: map, position: pos, content: d, zIndex: o.zIndex, title: o.title || '', gmpClickable: false
+  });
+}
+window.makeDotMarker = makeDotMarker;
+
 var userDot = null;
 function locateUser() {
   if (!navigator.geolocation) {
@@ -47,12 +61,9 @@ function locateUser() {
     map.setCenter(pos);
     map.setZoom(17);
     if (userDot) {
-      userDot.setPosition(pos);
+      userDot.position = pos;
     } else {
-      userDot = new google.maps.Marker({
-        position: pos, map: map, clickable: false, zIndex: 500, title: 'You are here',
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285f4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 }
-      });
+      userDot = makeDotMarker(map, pos, { color: '#4285f4', size: 18, border: 3, zIndex: 500, title: 'You are here' });
     }
   }, function() {
     if (window.showToast) showToast('Could not get your location', { type: 'error' });
@@ -102,7 +113,7 @@ function initialiseMap() {
   var view = null;
   try { view = JSON.parse(localStorage.getItem(VIEW_KEY) || 'null'); } catch (e) {}
   var mapOptions = {
-    zoom: (view && view.zoom) || 16, center: (view && view.center) || frisco,
+    mapId: window.JOWLA_CONFIG.mapId, zoom: (view && view.zoom) || 16, center: (view && view.center) || frisco,
     gestureHandling: 'greedy', clickableIcons: false,
     mapTypeControl: false, streetViewControl: false, fullscreenControl: false, cameraControl: !window.matchMedia('(pointer: coarse)').matches,
     cameraControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
@@ -301,44 +312,55 @@ function closeFilterSheet() {
   if (el) el.classList.remove('open');
 }
 
+var clusterer = null;
+var sharedIw = null;
+function ensureClusterer(map) {
+  if (!clusterer) {
+    clusterer = new markerClusterer.MarkerClusterer({
+      map: map, markers: [],
+      algorithm: new markerClusterer.SuperClusterAlgorithm({ maxZoom: 17, radius: 60 })
+    });
+  }
+  return clusterer;
+}
+
 function clearMarkers() {
-  markers.forEach(function(m) { m.setMap(null); });
+  if (clusterer) clusterer.clearMarkers(true);
   markers = [];
 }
 
+/** Markers are created once per row (cached on the row) and only added/removed from the clusterer. */
 function setLocations(map, locs, keepView) {
   var bounds = new google.maps.LatLngBounds();
-  var infowindow = new google.maps.InfoWindow({ content: "Content String", maxWidth: Math.min(320, window.innerWidth - 48), headerDisabled: true });
-  window.__iw = infowindow;
-  var count = 0;
+  if (!sharedIw) {
+    sharedIw = new google.maps.InfoWindow({ maxWidth: Math.min(320, window.innerWidth - 48), headerDisabled: true });
+    window.__iw = sharedIw;
+  }
+  var list = [];
   for (var i = 0; i < locs.length; i++) {
-    if (!locs[i].latitude || !locs[i].longtitude) continue;
-    var new_marker = createMarker(map, locs[i], infowindow);
-    markers.push(new_marker);
-    bounds.extend(new_marker.position);
-    count++;
+    var loc = locs[i];
+    if (!loc.latitude || !loc.longtitude) continue;
+    var m = loc._marker || (loc._marker = createMarker(map, loc));
+    list.push(m);
+    bounds.extend({ lat: loc.latitude, lng: loc.longtitude });
   }
-  google.maps.event.trigger(map, "resize");
-  if (!keepView && count > 1 && count < 2000) {
-    map.fitBounds(bounds);
-  }
+  markers = list;
+  ensureClusterer(map).addMarkers(list);
+  if (!keepView && list.length > 1) map.fitBounds(bounds);
 }
 
-function createMarker(map, location, infowindow) {
+function createMarker(map, location) {
   var position = { lat: parseFloat(location.latitude), lng: parseFloat(location.longtitude) };
-  var markerurl = "https://maps.google.com/mapfiles/kml/paddle/" + location.marker + ".png";
-  var marker = new google.maps.Marker({
-    position: position,
-    map: map,
-    title: location.name,
-    icon: { url: markerurl, scaledSize: new google.maps.Size(40, 40) }
-  });
-  google.maps.event.addListener(marker, 'click', function() {
+  var img = document.createElement('img');
+  img.src = "https://maps.google.com/mapfiles/kml/paddle/" + location.marker + ".png";
+  img.width = 40; img.height = 40; img.alt = ''; img.style.display = 'block';
+  var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '' });
+  marker.addListener('click', function() {
     window.__popupLoc = location;
     var e = escapeHtml;
     var nb = navButtons(location.latitude, location.longtitude);
     var detailsUrl = visitDetailsUrl(location);
-    infowindow.setContent('<div class="iw">' +
+    sharedIw.setContent('<div class="iw">' +
       '<button type="button" class="iw-close" aria-label="Close" onclick="window.__iw && window.__iw.close()">&times;</button>' +
       (location.name ? '<div class="iw-name">' + e(location.name) + '</div>' : '') +
       (location.address ? '<p>' + e(location.address) + '</p>' : '') +
@@ -347,7 +369,7 @@ function createMarker(map, location, infowindow) {
       '<a class="iw-btn" href="' + e(nb.primary.url) + '" target="_blank" rel="noopener">Navigate (' + nb.primary.label + ')</a>' +
       '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__popupLoc);}">Visit Details</a>' +
       '</div>');
-    infowindow.open(map, marker);
+    sharedIw.open({ map: map, anchor: marker });
   });
   return marker;
 }

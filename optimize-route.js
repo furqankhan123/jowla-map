@@ -72,38 +72,21 @@ function clearRouteStart() {
   refreshSettingsUi();
 }
 function drawStartMarker() {
-  if (startMarker) { startMarker.setMap(null); startMarker = null; }
+  if (startMarker) { startMarker.map = null; startMarker = null; }
   if (!opts.customStart || !mapRef) return;
-  startMarker = new google.maps.Marker({
-    position: { lat: opts.customStart.lat, lng: opts.customStart.lng },
-    map: mapRef,
-    title: 'Route start: ' + opts.customStart.name,
-    zIndex: 2000,
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE, scale: 11,
-      fillColor: '#34a853', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3
-    },
-    label: { text: 'S', color: '#fff', fontWeight: 'bold', fontSize: '12px' }
-  });
+  startMarker = makeDotMarker(mapRef, { lat: opts.customStart.lat, lng: opts.customStart.lng },
+    { color: '#34a853', size: 26, text: 'S', zIndex: 2000, title: 'Route start: ' + opts.customStart.name });
 }
 
 function drawNumberedMarkers(map, ordered) {
-  routeMarkers.forEach((m) => m.setMap(null));
-  routeMarkers = ordered.map((s, i) => new google.maps.Marker({
-    position: { lat: s.latitude, lng: s.longtitude },
-    map: map,
-    zIndex: 1000 + i,
-    clickable: false,
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE, scale: 12,
-      fillColor: '#1a73e8', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2
-    },
-    label: { text: String(i + 1), color: '#fff', fontWeight: 'bold', fontSize: '12px' }
-  }));
+  routeMarkers.forEach((m) => { m.map = null; });
+  routeMarkers = ordered.map((s, i) => makeDotMarker(map, { lat: s.latitude, lng: s.longtitude },
+    { color: '#1a73e8', size: 26, text: String(i + 1), zIndex: 1000 + i }));
+
 }
 
 function clearRouteOverlays() {
-  routeMarkers.forEach((m) => m.setMap(null));
+  routeMarkers.forEach((m) => { m.map = null; });
   routeMarkers = [];
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
@@ -474,7 +457,7 @@ function updateDoneUi() {
     const b = row.querySelector('.done-btn');
     if (b) b.textContent = done ? '✓' : '○';
   });
-  routeMarkers.forEach((m, i) => m.setOpacity(stops[i] && stops[i].done ? 0.35 : 1));
+  routeMarkers.forEach((m, i) => { m.content.style.opacity = stops[i] && stops[i].done ? 0.35 : 1; });
   updateEtas();
   const next = stops.find((s) => !s.done);
   const el = document.getElementById('route-primary');

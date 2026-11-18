@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.21.0]
+- Advanced Markers with clustering (Map ID in config.js, self-hosted markerclusterer): markers are created once per row and filters only add or remove them from the clusterer; route, start and location markers moved to Advanced Markers.
+
 ## [0.20.0]
 - Saved places (this browser only): save your location or an address under a name in Route settings, then pick them as the route start or end; deleting a place falls back to your location / round trip.
 
