@@ -84,8 +84,33 @@ function initialiseMap() {
     return results[1] || 0;
   };
 
-  var ledger = readLedger();
-  $.getJSON("https://sheets.googleapis.com/v4/spreadsheets/1U7JJDnTvClhdpHCje29uLwTNCiBhdPfUPxzChbxoXNQ/values/DFWDB!A2:V?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ", function(data) {
+  var VIEW_KEY = 'jowla-last-view';
+  var view = null;
+  try { view = JSON.parse(localStorage.getItem(VIEW_KEY) || 'null'); } catch (e) {}
+  var mapOptions = {
+    zoom: (view && view.zoom) || 16, center: (view && view.center) || frisco,
+    gestureHandling: 'greedy', clickableIcons: false,
+    mapTypeControl: false, streetViewControl: false, fullscreenControl: false, cameraControl: !window.matchMedia('(pointer: coarse)').matches,
+    cameraControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
+    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER }
+  };
+  map = new google.maps.Map(document.getElementById('map'), mapOptions);
+  map.addListener('idle', function() {
+    var c = map.getCenter();
+    try { localStorage.setItem(VIEW_KEY, JSON.stringify({ center: { lat: c.lat(), lng: c.lng() }, zoom: map.getZoom() })); } catch (e) {}
+  });
+
+  document.getElementById('locate-fab').addEventListener('click', locateUser);
+  var cf = document.getElementById('cluster-fab');
+  if (cf) cf.addEventListener('click', function() { if (window.suggestClusters) suggestClusters(); });
+  var ff = document.getElementById('filter-fab');
+  if (ff) ff.addEventListener('click', openFilterSheet);
+
+  var SHEET_URL = "https://sheets.googleapis.com/v4/spreadsheets/1U7JJDnTvClhdpHCje29uLwTNCiBhdPfUPxzChbxoXNQ/values/DFWDB!A2:V?key=AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ";
+
+  function onData(data) {
+    var ledger = readLedger();
+    locations = [];
     $(data.values).each(function() {
       var location = {};
       location.db = this[0];
@@ -110,29 +135,22 @@ function initialiseMap() {
     });
     saveLedger(ledger);
     console.log('locations size (after DNV filter) ' + locations.length);
+    if (window.hideToast) hideToast();
     if (!navigator.onLine && window.showToast) showToast('Offline — showing saved data');
 
-    var mapOptions = {
-      zoom: 16, center: frisco,
-      gestureHandling: 'greedy', clickableIcons: false,
-      mapTypeControl: false, streetViewControl: false, fullscreenControl: false, cameraControl: !window.matchMedia('(pointer: coarse)').matches,
-      cameraControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
-      zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER }
-    };
-    map = new google.maps.Map(document.getElementById('map'), mapOptions);
-
     applyUrlFilters();
-
-    document.getElementById('locate-fab').addEventListener('click', locateUser);
-    var cf = document.getElementById('cluster-fab');
-    if (cf) cf.addEventListener('click', function() { if (window.suggestClusters) suggestClusters(); });
-    var ff = document.getElementById('filter-fab');
-    if (ff) ff.addEventListener('click', openFilterSheet);
-
     if (typeof addOptimizeControl === 'function') {
       addOptimizeControl(map);
     }
-  });
+  }
+
+  function loadData() {
+    if (window.showToast) showToast('Loading stops…', { sticky: true });
+    $.getJSON(SHEET_URL).done(onData).fail(function() {
+      if (window.showToast) showToast('Could not load stops', { type: 'error', sticky: true, action: { label: 'Retry', onClick: loadData } });
+    });
+  }
+  loadData();
 }
 
 function parseCityParam(raw) {

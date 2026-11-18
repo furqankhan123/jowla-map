@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.19.0';
+const APP_VERSION = '0.19.1';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -97,9 +97,10 @@ function showToast(msg, o) {
   }
   el.className = 'show' + (o && o.type === 'error' ? ' error' : '') + (act ? ' has-action' : '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, act ? 7000 : 4000);
+  if (!(o && o.sticky)) toastTimer = setTimeout(() => { el.className = ''; }, act ? 7000 : 4000);
 }
 window.showToast = showToast;
+window.hideToast = function () { const el = document.getElementById('toast'); if (el) el.className = ''; clearTimeout(toastTimer); };
 
 let optimizing = false;
 function setBusy(b) {

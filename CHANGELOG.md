@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.1]
+- Map appears immediately at your last view with a Loading stops message; a failed data load shows an error with Retry instead of a blank page.
+
 ## [0.19.0]
 - Optimize during a route in progress now asks: re-plan the remaining stops from your position (done stops kept), start a new route, or cancel. When all stops are done, "Find more stops" appears.
 
