@@ -171,7 +171,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 - **UI:** the end point appears as a final row in the stop list (no Visit/Done buttons) with its ETA. Google/Apple navigation URLs use the chosen end as `destination` (Apple/Google segments: final segment ends at the end point).
 - **Edge cases:** end equals start with one stop; end unreachable by mode; Routes API waypoint cap (25 intermediates) still applies.
 - **Verify:** same-start/end round trip adds the return time; different end changes the order and total; fit-to-time respects it; clearing the end returns to same-as-start; persisted route restores the end.
-## Session handoff (state at v0.20.0 on `main`; 6.10 is on branch `claude/marker-clustering` as v0.21.0; read this first)
+## Session handoff (state at v0.21.0 on `main`; read this first)
 
 **How to work:** develop on branch `claude/implement-plan-md-qjez3u`, commit + push each non-trivial change, then fast-forward `main` (GitHub Pages serves `main`: https://furqankhan123.github.io/). Release with `node tools/bump-version.js X.Y.Z "changelog line" ["plan row"]` (updates config.js version, every `?v=`, `CACHE_VERSION`, CHANGELOG, PLAN row). After deploy the service worker serves the old files: reload twice. Run `node tests/segments.test.js` and `node --check` on every JS file before pushing. Never put real addresses, names or coordinates from screenshots into the repo or commit messages.
 
@@ -189,14 +189,14 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 **Open items (pick up here):**
 1. **Push and test on a phone.** Round 6 (0.18.5-0.20.0) was developed without a browser; walk through: quick-log double tap and Undo, Optimize twice (logged stop not re-offered), mid-route Optimize choice, offline reload with a saved route, Refresh data, saved places as start/end, travel mode setting, filters, update toast after a deploy.
-2. **6.10 Advanced Markers + clustering** is built on branch `claude/marker-clustering` (v0.21.0) and untested (the Maps key only loads from the GitHub Pages domain). Verify on the deployed branch/preview: popup opens, pins anchor correctly, numbered route dots are centred, clusters appear when zoomed out, filter apply is fast with "All". Then merge into `main`. The Map ID lives in `config.js` (`mapId`); it is not a secret.
+2. **6.10 Advanced Markers + clustering** is merged into `main` as v0.21.0 but has never run against the real Maps API (the Maps key only loads from the GitHub Pages domain). Verify on the deployed site: popup opens, pins anchor correctly, numbered route dots are centred, clusters appear when zoomed out, filter apply is fast with "All". The Map ID lives in `config.js` (`mapId`); it is not a secret.
 3. **6.23 walk/drive path coloring** stays deferred (needs per-leg modes).
 4. **Quick-log risk:** the form/pipeline is owned by someone else; if it changes, direct mode fails silently (opaque response). `apps-script/Code.gs` remains an optional relay for confirmed delivery.
 5. **Ongoing (owner, Cloud Console):** keep both API keys HTTP-referrer restricted, add per-key API restrictions and a daily Routes API quota cap; keep the screenshot-privacy rule above.
 
 Round 6 below is the ordered plan that was worked through; every item is DONE except 6.10 (on the branch above) and 6.23 (deferred).
 
-## Round 6: code review findings (collected at 0.18.4; DONE 0.18.5-0.20.0 except 6.10 on branch `claude/marker-clustering` = 0.21.0, and 6.23 deferred)
+## Round 6: code review findings (collected at 0.18.4; DONE 0.18.5-0.20.0 except 6.23 deferred; 6.10 merged as 0.21.0, awaiting a phone check)
 
 Order rule: bugs that lose or misrecord visits first, then performance at ~45k rows, then reliability/offline, then maintainability, then features. Each item is one release unless marked otherwise. Sizes: S < 1h, M a few hours, L a day+.
 
@@ -271,7 +271,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 - **Fix:** at load, store `loc._name` (lowercase), `loc._sts` (lowercase), `loc._visitMs` (parsed once, NaN → null). Use them in `matchesFilters` and `getStopsInBounds` (numeric bounds compare instead of `LatLng`). Debounce the name input's count by 200 ms. Update `_visitMs` wherever `visitdate` changes (quick-log, 6.2 ledger).
 - **Verify:** typing in the name field stays smooth on a phone (Performance panel: each keystroke < 16 ms after debounce); counts unchanged vs before.
 
-### 6.10 Marker rendering at 45k rows  [BUILT on branch claude/marker-clustering, 0.21.0; needs phone test before merging to main]
+### 6.10 Marker rendering at 45k rows  [DONE 0.21.0, merged to main; needs phone check, revert the commit if broken]
 - **Problem:** `applyFilters` destroys and recreates every marker (`clearMarkers` + `setLocations`), creates a new InfoWindow each time, and uses `google.maps.Marker`, which Google deprecated in Feb 2024 in favor of `AdvancedMarkerElement`. With "All" filters this is tens of thousands of DOM/canvas markers: slow first paint and filter apply, high memory on phones.
 - **Fix:** switch to `AdvancedMarkerElement` (needs a Map ID; add `mapId` to config, load `marker` library) with the existing paddle icons as `<img>` content, plus `@googlemaps/markerclusterer` (self-host in `vendor/`, add to SW shell) so zoomed-out views show cluster bubbles. Create markers once at load, keyed by `db:rowid`; filters only add/remove from the clusterer. One shared InfoWindow. Route numbered markers and start/end markers move to Advanced Markers too (same zIndex rules).
 - **Verify:** "All" filters load and pan smoothly on a mid-range phone; filter apply < 1 s; popup, Visit Details and route markers unchanged; fitBounds still works (the `count < 2000` guard can go).
