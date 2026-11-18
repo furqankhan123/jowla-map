@@ -71,7 +71,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.19.6';
+const APP_VERSION = '0.19.7';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -897,3 +897,21 @@ window.clearRoute = function () {
   document.body.classList.remove('sheet-expanded', 'route-closed');
 };
 window.addOptimizeControl = addOptimizeControl;
+
+/* Offline boot: if the Maps JS API never loads (offline / blocked), still show the saved
+   route list, Go links, Log and done toggles. Overlays are drawn when Maps does load. */
+window.addEventListener('load', function () {
+  setTimeout(function () {
+    if (window.google && window.google.maps) return;
+    try {
+      const raw = localStorage.getItem(ROUTE_KEY);
+      if (!raw) return;
+      const route = JSON.parse(raw);
+      if (!route || !route.stops || Date.now() - route.savedAt > ROUTE_MAX_AGE_MS) return;
+      currentRoute = route;
+      showRoutePanel(route.stops, route.totalMins, route.travelMode, route.start, route.legSecs, route.end);
+      updateDoneUi();
+      showToast('Map unavailable offline; route list still works', { type: 'error' });
+    } catch (e) {}
+  }, 3000);
+});

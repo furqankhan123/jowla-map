@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.7]
+- If Google Maps cannot load (offline), the saved route list, Go links, Log and done toggles still appear after a few seconds.
+
 ## [0.19.6]
 - Refresh data button in Route settings, plus a silent refresh when the app returns to the foreground after 30 minutes; current filters, viewport and route are kept.
 
