@@ -171,9 +171,9 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 - **UI:** the end point appears as a final row in the stop list (no Visit/Done buttons) with its ETA. Google/Apple navigation URLs use the chosen end as `destination` (Apple/Google segments: final segment ends at the end point).
 - **Edge cases:** end equals start with one stop; end unreachable by mode; Routes API waypoint cap (25 intermediates) still applies.
 - **Verify:** same-start/end round trip adds the return time; different end changes the order and total; fit-to-time respects it; clearing the end returns to same-as-start; persisted route restores the end.
-## Session handoff (state at v0.21.0 on `main`; read this first)
+## Session handoff (state at v0.21.4 on `main`, live on GitHub Pages; read this first)
 
-**How to work:** develop on branch `claude/implement-plan-md-qjez3u`, commit + push each non-trivial change, then fast-forward `main` (GitHub Pages serves `main`: https://furqankhan123.github.io/). Release with `node tools/bump-version.js X.Y.Z "changelog line" ["plan row"]` (updates config.js version, every `?v=`, `CACHE_VERSION`, CHANGELOG, PLAN row). After deploy the service worker serves the old files: reload twice. Run `node tests/segments.test.js` and `node --check` on every JS file before pushing. Never put real addresses, names or coordinates from screenshots into the repo or commit messages.
+**How to work:** develop on branch `claude/implement-plan-md-qjez3u`, commit + push each non-trivial change, then fast-forward `main` (GitHub Pages serves `main`: https://furqankhan123.github.io/). Release with `node tools/bump-version.js X.Y.Z "changelog line" ["plan row"]` (updates config.js version, every `?v=`, `CACHE_VERSION`, CHANGELOG, PLAN row). After deploy the service worker serves the old files: reload twice. Run `node tests/run.js` (syntax check of every JS file plus all `tests/*.test.js`) before pushing; CI runs it too. Live site: https://furqankhan123.github.io/jowla-map-optimize/newindex.html (Pages takes ~1-2 min; `curl .../sw.js | grep CACHE_VERSION` shows what is deployed). Never put real addresses, names or coordinates from screenshots into the repo or commit messages.
 
 **Built and live (all user-tested on an iPhone unless noted):** mobile-first sheet; Optimize (GPS start, fit-to-time, ETAs, numbered markers); Go/Log/done flow; in-map filters; cluster suggestions; PWA shell; round trip by default; "Set a different end point" by address (Places API (New) + Geocoder fallback) or current location; compact numbered segment buttons per app (`segments.js`, tested); preferred maps app setting (`nav.js`); optimize icon; first-run tour (`tour.js`); sheet state persists across app switches; quick-log (direct to the Visit Details Google Form, verified working live in 0.18.4); camera control bottom-left on desktop; reopen-route button.
 
@@ -187,16 +187,28 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 - The Visit Details form is a plain GET (no method attr): quick-log mimics it with a no-cors GET and the same query string. Empty Language/Comments must be OMITTED (empty checkbox value = 400); POST/FormData attempts failed with 400.
 - Sheet: visit codes `No Response`, `Left Message`, `Gave Targheeb` (plus `Do Not Visit`, `[auto] comment update`; address strings also appear in the visitcode column = noise). Date format `October 25, 2026`. `rowid` (column V) is the row number; ~45,400 rows load. The Sheets key is referrer-restricted (curl returns 403, correct).
 
+**Live-tested with Playwright at v0.21.4 (390x844, real Maps key on the Pages domain):** map loads 39,671 stops with no console errors; Advanced Markers + clusters render; pin popup works; Optimize gives 15 stops / driving / 1 Routes call with numbered dots; Drive is the default travel mode; done toggle + progress-aware ETAs + local ledger; mid-route Optimize choice and Re-plan (keeps done stops); filters ("More than 30 days" >= "Not yet visited"); cluster suggestions; Places autocomplete + save/delete and the Start/End dropdowns; Refresh data; quick-log (double tap -> 1 queue item, Undo within 7 s -> nothing sent, real submit -> sheet row updated with the date within seconds; the test wrote ONE real "No Response" for a test row, correct via Visit Details if unwanted); offline reload after a clean SW install shows cached data + the saved route list.
+
+**Bugs found by live testing and already fixed:** 0.21.2 unfiltered map zoomed to the whole world (mis-geocoded rows; fitBounds guard restored, saved views with zoom < 6 ignored); 0.21.3 SW install now uses `cache: 'reload'` (stale HTTP cache made updates install old files); 0.21.4 SW sheet-data cache write silently failed (buffer the body first) and a failed data load now still restores the saved route.
+
+**Testing tips (learned the hard way):**
+- Playwright MCP: after a deploy, unregister the SW and delete caches (`navigator.serviceWorker.getRegistrations()`, `caches.keys()`), load twice, wait ~15 s; otherwise the old SW serves old files. `browser_run_code_unsafe` with `page.context().setOffline(true)` tests offline. With ~39k `gmp-advanced-marker` elements `browser_click` on a marker selector times out: click via `evaluate` (`el.click()`).
+- Never run quick-log / "Log visit" in tests without the owner's say-so: it writes to the real sheet via the form. `.playwright-mcp/` is gitignored (its screenshots contain real names); never commit them.
+- In the bash tool, avoid backticks/`$(` inside commit messages and `sed` strings; put multi-line edits in a script file (Python) in the scratchpad instead.
+
 **Open items (pick up here):**
-1. **Push and test on a phone.** Round 6 (0.18.5-0.20.0) was developed without a browser; walk through: quick-log double tap and Undo, Optimize twice (logged stop not re-offered), mid-route Optimize choice, offline reload with a saved route, Refresh data, saved places as start/end, travel mode setting, filters, update toast after a deploy.
-2. **6.10 Advanced Markers + clustering** is merged into `main` as v0.21.0 but has never run against the real Maps API (the Maps key only loads from the GitHub Pages domain). Verify on the deployed site: popup opens, pins anchor correctly, numbered route dots are centred, clusters appear when zoomed out, filter apply is fast with "All". The Map ID lives in `config.js` (`mapId`); it is not a secret.
-3. **6.23 walk/drive path coloring** stays deferred (needs per-leg modes).
-4. **Quick-log risk:** the form/pipeline is owned by someone else; if it changes, direct mode fails silently (opaque response). `apps-script/Code.gs` remains an optional relay for confirmed delivery.
-5. **Ongoing (owner, Cloud Console):** keep both API keys HTTP-referrer restricted, add per-key API restrictions and a daily Routes API quota cap; keep the screenshot-privacy rule above.
+1. **~29,000 `gmp-advanced-marker` elements stay attached to the DOM at once** (measured live) even though only a few are on screen: heavy for phones. Investigate why the clusterer leaves them attached (markers cached on `loc._marker` in map.js `setLocations`; clusterer in `ensureClusterer`) and detach/avoid creating markers outside the viewport (e.g. only create/add markers for rows within bounds + margin on `idle`).
+2. **"New version available" toast can be hidden:** `onData` calls `hideToast()` (map.js) which can clear the sticky update toast if it appeared before the data finished loading. Only hide the "Loading stops..." toast.
+3. **Google warning:** `<gmp-advanced-marker>: Please use addEventListener with 'gmp-' events instead of addListener` (map.js `createMarker`): switch to `marker.addEventListener('gmp-click', ...)` (verify the popup still opens).
+4. **Quick-log outside a route:** `quickLog` for a stop that is not in the current route does not write the local ledger (only `markStopDone` does). Chips only appear for route stops so it is test-only, but make `quickLog` call `ledgerRecord` itself for safety.
+5. **Phone checks still pending** (could not be done in Playwright): Apple Maps "Go"/segment behaviour, real GPS start, touch layout, quick-log chips on the sheet, Apple/Google segment navigation.
+6. **6.23 walk/drive path coloring** stays deferred (needs per-leg modes).
+7. **Quick-log risk:** the form/pipeline is owned by someone else; if it changes, direct mode fails silently (opaque response). `apps-script/Code.gs` remains an optional relay for confirmed delivery.
+8. **Ongoing (owner, Cloud Console):** keep both API keys HTTP-referrer restricted, add per-key API restrictions and a daily Routes API quota cap (both keys are currently the same string in `config.js`); keep the screenshot-privacy rule above.
 
-Round 6 below is the ordered plan that was worked through; every item is DONE except 6.10 (on the branch above) and 6.23 (deferred).
+Round 6 below is the ordered plan that was worked through; every item is DONE (6.10 live as 0.21.0) except 6.23 (deferred).
 
-## Round 6: code review findings (collected at 0.18.4; DONE 0.18.5-0.20.0 except 6.23 deferred; 6.10 merged as 0.21.0, awaiting a phone check)
+## Round 6: code review findings (collected at 0.18.4; ALL DONE 0.18.5-0.21.0 except 6.23 deferred; live-tested at 0.21.4, see handoff)
 
 Order rule: bugs that lose or misrecord visits first, then performance at ~45k rows, then reliability/offline, then maintainability, then features. Each item is one release unless marked otherwise. Sizes: S < 1h, M a few hours, L a day+.
 

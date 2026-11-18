@@ -45,7 +45,7 @@ The loop this targets, and how each feature shortens it:
 - `segments.js`, `nav.js`: Google/Apple URL builders (tested in `tests/`) and the preferred-app helper
 - `cluster.js`, `writeback.js`, `tour.js`, `config.js`, `sw.js`: clusters, quick-log sync, tour, deployment config (keys, sheet, form, Map ID, version), service worker
 - `apps-script/Code.gs`: optional relay for confirmed quick-log delivery (not needed; direct mode works)
-- `tools/bump-version.js` (releases), `tools/make-icons.py` (PWA icons), `icons/`, `vendor/` (self-hosted markerclusterer on the 6.10 branch)
+- `tools/bump-version.js` (releases), `tools/make-icons.py` (PWA icons), `icons/`, `vendor/` (self-hosted markerclusterer)
 - `map.css`: styles
 - `PLAN.md`: roadmap and **session handoff** (start here to continue work)
 - `CHANGELOG.md`: release notes
