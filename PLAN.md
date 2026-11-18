@@ -206,7 +206,77 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 7. **Quick-log risk:** the form/pipeline is owned by someone else; if it changes, direct mode fails silently (opaque response). `apps-script/Code.gs` remains an optional relay for confirmed delivery.
 8. **Ongoing (owner, Cloud Console):** keep both API keys HTTP-referrer restricted, add per-key API restrictions and a daily Routes API quota cap (both keys are currently the same string in `config.js`); keep the screenshot-privacy rule above.
 
+9. **Round 7 below is the next plan** (owner ideas + Playwright review at 0.21.4). Start with 7.1.
+
 Round 6 below is the ordered plan that was worked through; every item is DONE (6.10 live as 0.21.0) except 6.23 (deferred).
+
+## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; NOT STARTED)
+
+Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live site at 390x844 (load, tour, Optimize, sheet peek/half/full). Order rule as in Round 6: wrong-stop/visit-data issues first, then the main route sheet, then routing quality, then polish. Sizes: S < 1h, M a few hours, L a day+.
+
+| # | Item | Type | Size | Depends on |
+|---|------|------|------|-----------|
+| 7.1 | "[auto]: maybe rental" rows count as unvisited, ranked last | data/bug | S | - |
+| 7.2 | Next-stop name on its own line above Go / Log | UX | S | - |
+| 7.3 | "ends at start 6:16 PM" -> "ends at 6:16 PM" | UX | S | - |
+| 7.4 | Shorter summary line (no wrap at 390px) | UX | S | 7.3 |
+| 7.5 | Route stops readable over the clusterer | UX/bug | S | - |
+| 7.6 | Bigger, clearer done toggle | UX | S | - |
+| 7.7 | "starts at GPS" is wrong after the map-center fallback | bug | S | - |
+| 7.8 | Fewer U-turns: GPS heading + arrive on the house's side | routing | S | - |
+| 7.9 | Pick the stop set with the most visits per minute | routing | M | 7.1 |
+| 7.10 | Turn-aware ordering (U-turn / left-turn penalty) | routing | L | 7.8 |
+| 7.11 | Display names in Title Case | polish | S | - |
+| 7.12 | Leftover handoff items 1-4 (DOM markers, toast, gmp-click, quickLog ledger) | cleanup | M | - |
+
+### 7.1 "[auto]: maybe rental" rows count as unvisited, ranked last
+- **Finding (live data, 39,671 rows):** 384 rows have visitcode `[auto] comment update` and a comment starting `[auto]: maybe rental`. 378 have only that tag; 6 have human text after it (e.g. "No response", "Dog at home"). Their `visitdate` is the date the automation ran, not a visit, so today the recent-visit window (`getStopsInBounds` in [optimize-route.js](optimize-route.js)) and the Visited filter (`matchesFilters` in [logic.js](logic.js)) wrongly treat them as visited.
+- **Fix:** in `prepRow` ([map.js](map.js)) set `loc._auto = true` when visitcode contains `[auto]` and the comment, after removing the `[auto]: maybe rental` tag, is empty; for `_auto` rows set `_visitMs = null` so every filter and the recent-visit rule see them as never visited (keep the raw date for the popup). In `runOptimization`, sort `_auto` rows after real candidates (e.g. sort key `dist * 3`, or real rows first and auto rows only to fill up to `MAX_STOPS`). Route rows and the popup show a small grey "maybe rental" tag. Put the detection in `logic.js` (`isAutoVisit(loc)`) with a unit test using synthetic rows.
+- **Owner decision:** the 6 rows with human text after the tag. Recommended: treat them as real visits (keep their date), since a person added a note.
+- **Verify:** a synthetic auto row dated yesterday is eligible for Optimize and shows under "Not yet visited"; in a view with enough real unvisited stops, no auto rows are picked; with few, they fill the end of the list. The local ledger (6.2) still wins when the stop is actually logged.
+
+### 7.2 Next-stop name on its own line above Go / Log
+- **Finding:** the primary row is one green pill "Go: 1. <name>" next to "Log visit ✓"; long names get cut or wrap inside the button, and the name is the button label, so a tap on the name starts navigation.
+- **Fix:** in `updateDoneUi` ([optimize-route.js](optimize-route.js)) render `#route-primary` as: a line "Next · 1. Name · 5:21 PM" (bold name, ETA from `computeEtas`, wraps freely, not a link), then a row with **Go** (preferred app, icon + "Go") and **Log visit ✓**, then the quick-log chips. Same change for the offline route list (6.14).
+- **Verify:** 390px, short and very long (two-line) names: the buttons keep the same size and position; the tour's sheet step still points at the Go button.
+
+### 7.3 "ends at start 6:16 PM" -> "ends at 6:16 PM"
+- Both `routeSummaryText` and the summary built in `showRoutePanel` ([optimize-route.js](optimize-route.js)) use `end.name`, which is the literal `'start'` for a round trip (`same: true`). Show the name only for a saved place or custom end ("ends at Home 6:16 PM"); for a round trip show "ends at 6:16 PM". Build the text in one helper so the two copies cannot drift.
+
+### 7.4 Shorter summary line
+- "15 stops · ~58 min · driving · ends at start 6:16 PM" wraps to two lines at 390px and pushes the buttons down in peek. Use "15 stops · 58 min · 🚗 · ends 6:16 PM" (walk icon for WALK); full wording stays in the `title`/aria-label.
+
+### 7.5 Route stops readable over the clusterer
+- **Finding:** numbered route dots are blue circles like the cluster bubbles, and clusters sit on top of them (screenshot: route 11/14/15 hidden under "17", "3", "2" bubbles). With 15 stops the route is hard to follow.
+- **Fix:** while a route is shown, give route markers a higher `zIndex` than clusters and a distinct style (green fill or dark with white ring); add a "Hide other pins" toggle on by default during a route that removes the non-route markers from the clusterer (`clusterer.clearMarkers` / re-add on close). The next stop's dot is larger.
+- **Verify:** every route number is visible at the fitted zoom; closing the route restores all pins and clusters.
+
+### 7.6 Bigger, clearer done toggle
+- The row toggle is a small thin "○" (about 20px, low contrast). Make it a 44px tap target with a 24px outlined checkbox circle that fills green with ✓ when done; keep aria-pressed.
+
+### 7.7 "starts at GPS" after map-center fallback
+- When geolocation fails, `optimizeCurrentView` falls back to the map center but the list still says "starts at GPS". Pass the start's source (`gps` / `center` / place name) into the route and show "starts at map center".
+
+### 7.8 Fewer U-turns: GPS heading + arrive on the house's side (cheap, no extra cost)
+- **Context:** the Routes API has no "avoid U-turns" or "avoid left turns" option (route modifiers are only tolls, highways, ferries, indoor). Also, turn-by-turn comes from Google/Apple Maps each time Go is tapped; our route only decides the **order** of stops, and the nav app picks the turns between them. So the levers are: the order, the start direction, and the side of the street we arrive on.
+- **Fix in `requestRoute` (DRIVE only):** add `heading` to the origin's `location` from `pos.coords.heading` when the phone is moving (non-null, speed > 2 m/s), so the route does not start with a U-turn; set `sideOfRoad: true` on each intermediate so Google routes to arrive on the side of the road the house is on (avoids passing it and turning back). Check that both work with `optimizeWaypointOrder` (it rejects `via` waypoints; `sideOfRoad` and `heading` should be fine) and keep the field mask unchanged.
+- **Verify:** compare the polyline on 5 saved test areas with and without; count back-and-forth segments (7.10's detector) and total minutes; keep it only if U-turns drop without much added time.
+
+### 7.9 Pick the stop set with the most visits per minute
+- **Problem:** candidates are the 15 nearest eligible stops from the start, then trimmed to fit the time target. Nearest is not the same as most efficient: a tight block 4 minutes away often beats scattered houses 1-2 minutes away.
+- **Fix (client-side, no extra API calls):** reuse `findClusters` ([logic.js](logic.js)) on the eligible stops in view; for each cluster and for the current nearest set, estimate `stops / (drive to cluster + estimateTourMins + return)`, and send the best set to the Routes API. Show which was chosen ("Best block: 14 stops, 3 min away"); Route settings gets "Stop choice: Nearest / Most visits per hour" (default the latter once tested).
+- **Verify:** unit test with synthetic points (a far dense cluster beats near scattered points); live: visits per hour in the summary goes up vs the nearest set in the same places.
+
+### 7.10 Turn-aware ordering (U-turn / left-turn penalty; experimental)
+- **Honest limit:** true "easiest drive" (no left turns, no U-turns) needs a routing engine with turn costs (GraphHopper or Valhalla, self-hosted or paid); Google's free-tier products do not offer it. Not planned.
+- **What we can do:** decode the returned polyline (already stored as `encoded`) and count sharp reversals (bearing change > 150° within ~50 m = U-turn) and left turns (change of -60° to -120°, right-hand traffic). Build a second order client-side ("street sweep": group stops by street name parsed from `address`, visit each street once in one direction, chain streets by nearest end, prefer right turns) and request it with `optimizeWaypointOrder: false` only when Google's order has 2 or more U-turns. Keep whichever has fewer `minutes + 1 min per U-turn + 0.3 min per left turn`. That is at most 2 Routes calls per Optimize; behind a setting "Fewer U-turns (uses one more request)".
+- **Verify:** the detector unit-tested on synthetic polylines; live comparison over 10 areas: U-turns and left turns per route before/after, and the added minutes.
+
+### 7.11 Display names in Title Case
+- Many names are ALL CAPS and wrap to three lines in the list. Show `toTitleCase(name)` in the list, the next-stop line and popups (display only; never change data sent to the form).
+
+### 7.12 Leftover handoff items
+- Handoff open items 1-4 are still open at 0.21.4 (the `gmp-click` warning still appears in the console on load). Do them as one cleanup release after 7.1-7.7. Also seen in the console: "Google Maps JavaScript API has been loaded directly without loading=async"; add `loading=async` to the dynamic script URL in `config.js`/the loader and check the `callback` path still runs.
 
 ## Round 6: code review findings (collected at 0.18.4; ALL DONE 0.18.5-0.21.0 except 6.23 deferred; live-tested at 0.21.4, see handoff)
 
