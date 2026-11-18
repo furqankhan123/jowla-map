@@ -225,7 +225,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 | 6.19 | Travel mode chosen from stop spacing, not distance from start | feature | S | - |
 | 6.20 | Cluster empty state mentions active filters (DONE 0.19.13) | feature | S | - |
 | 6.21 | Real PWA icons (DONE 0.19.14) | feature | S | - |
-| 6.22 | Saved places for start/end | feature | M | 6.7 |
+| 6.22 | Saved places for start/end (DONE 0.20.0) | feature | M | 6.7 |
 | 6.23 | Walk/drive path coloring (step 7) | feature | - | deferred |
 
 ### 6.1 Quick-log double tap logs the next stop

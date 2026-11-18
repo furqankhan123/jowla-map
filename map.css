@@ -245,3 +245,8 @@ a.seg-btn.apple { background: #007aff; }
 #replan-choice { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; justify-content: center; }
 #replan-choice .rc-card { background: #fff; width: 100%; max-width: 480px; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 10px; }
 #replan-choice .nav-btn.alt { background: #eef3fd; color: var(--blue); border: 1px solid var(--blue); }
+
+.places-box { margin: 8px 0; }
+.places-box input { display: block; width: 100%; box-sizing: border-box; min-height: 44px; font-size: 16px; margin: 6px 0; padding: 0 10px; border: 1px solid #ccc; border-radius: 8px; }
+.place-row { display: flex; align-items: center; justify-content: space-between; min-height: 44px; border-bottom: 1px solid #eee; }
+.place-del { min-width: 44px; min-height: 44px; border: 0; background: none; font-size: 24px; color: #c5221f; cursor: pointer; }

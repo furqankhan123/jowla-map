@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.20.0]
+- Saved places (this browser only): save your location or an address under a name in Route settings, then pick them as the route start or end; deleting a place falls back to your location / round trip.
+
 ## [0.19.14]
 - New app icons (pin with a dotted route): 192, 512, a full-bleed maskable 512 with safe zone, and the 180 apple-touch icon; regenerate with tools/make-icons.py.
 

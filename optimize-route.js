@@ -12,7 +12,7 @@ const ROUTE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_FIT_ITERATIONS = 3;
 
 // User-adjustable settings (persisted)
-const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, travelPref: 'auto' };
+const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, defaultEnd: null, travelPref: 'auto' };
 try {
   Object.assign(opts, JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'));
 } catch (e) {}
@@ -26,6 +26,44 @@ let currentPolyline = null;
 let routeMarkers = [];
 let startMarker = null;
 let mapRef = null;
+
+/* Saved places (this browser only, never committed): [{id, name, lat, lng}] */
+const PLACES_KEY = 'jowla-places';
+function readPlaces() {
+  try { const p = JSON.parse(localStorage.getItem(PLACES_KEY) || '[]'); return Array.isArray(p) ? p : []; } catch (e) { return []; }
+}
+function writePlaces(p) { try { localStorage.setItem(PLACES_KEY, JSON.stringify(p)); } catch (e) {} }
+function addPlace(name, lat, lng) {
+  name = (name || '').trim();
+  if (!name) { showToast('Give the place a name first', { type: 'error' }); return false; }
+  const p = readPlaces();
+  p.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, lat, lng });
+  writePlaces(p);
+  showToast('Saved place: ' + name);
+  return true;
+}
+function deletePlace(id) {
+  writePlaces(readPlaces().filter((x) => x.id !== id));
+  // Falling back to GPS / round trip when the active start or end is deleted.
+  if (opts.customStart && opts.customStart.placeId === id) { opts.customStart = null; drawStartMarker(); }
+  if (opts.defaultEnd && opts.defaultEnd.placeId === id) { opts.defaultEnd = null; }
+  saveOpts();
+}
+function geocodeAddress(q) {
+  return new Promise((resolve, reject) => {
+    if (!window.google || !google.maps) { reject(new Error('Maps unavailable')); return; }
+    new google.maps.Geocoder().geocode({ address: q }, (res, status) => {
+      if (status === 'OK' && res && res[0]) {
+        const l = res[0].geometry.location;
+        resolve({ lat: l.lat(), lng: l.lng() });
+      } else reject(new Error('Address not found'));
+    });
+  });
+}
+function endFromOpts() {
+  const e = opts.defaultEnd;
+  return e ? { lat: e.lat, lng: e.lng, name: e.name } : null;
+}
 
 function clearRouteStart() {
   opts.customStart = null;
@@ -220,7 +258,7 @@ async function runOptimization(map, start, bounds, source) {
   }
   let result = null;
   for (let iter = 0; iter < MAX_FIT_ITERATIONS; iter++) {
-    result = await requestRoute(start, candidates);
+    result = await requestRoute(start, candidates, endFromOpts());
     if (!result) return;
     if (!opts.targetMins || result.totalMins <= opts.targetMins * 1.1 || candidates.length <= 2) break;
     const perStop = result.totalMins / candidates.length;
@@ -240,7 +278,9 @@ async function runOptimization(map, start, bounds, source) {
     totalMins: result.totalMins,
     travelMode: result.travelMode,
     start: start,
-    end: { lat: start.lat, lng: start.lng, name: opts.customStart ? opts.customStart.name : 'start', same: true },
+    end: opts.defaultEnd
+      ? { lat: opts.defaultEnd.lat, lng: opts.defaultEnd.lng, name: opts.defaultEnd.name }
+      : { lat: start.lat, lng: start.lng, name: opts.customStart ? opts.customStart.name : 'start', same: true },
     encoded: result.encoded,
     savedAt: Date.now()
   };
@@ -368,6 +408,7 @@ function replanRemaining() {
 /** Re-optimize the current stops so the route ends at `endPoint` {lat,lng,name} (null = back to start). */
 async function rerouteWithEnd(endPoint) {
   if (optimizing || !currentRoute) return;
+  if (!endPoint && opts.defaultEnd) { opts.defaultEnd = null; saveOpts(); }
   const old = currentRoute;
   if (!old.stops.length) return;
   setBusy(true);
@@ -602,6 +643,13 @@ function ensurePanel() {
   return panel;
 }
 
+function placeSel(id, selectedId, firstLabel, legacyName) {
+  return `<select id="${id}"><option value="">${firstLabel}</option>` +
+    (legacyName ? `<option value="__legacy" selected>${escapeHtml(legacyName)} (saved earlier)</option>` : '') +
+    readPlaces().map((p) => `<option value="${escapeHtml(p.id)}"${p.id === selectedId ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('') +
+    `</select>`;
+}
+
 function refreshSettingsUi() {
   const el = document.getElementById('route-settings');
   if (!el) return;
@@ -617,9 +665,14 @@ function refreshSettingsUi() {
       <label class="chk"><input type="checkbox" id="opt-recent"${opts.includeRecent ? ' checked' : ''}> Include recently visited</label>
       <label>Travel mode ${sel('opt-mode', opts.travelPref, [['auto', 'Auto'], ['WALK', 'Walk'], ['DRIVE', 'Drive']])}</label>
       <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
-      <div class="start-row">Start: ${opts.customStart
-        ? `<b>${escapeHtml(opts.customStart.name)}</b> <a href="#" id="opt-clear-start">clear</a>`
-        : 'your location'}</div>
+      <label>Start ${placeSel('opt-start', opts.customStart && opts.customStart.placeId, 'My location', opts.customStart && !opts.customStart.placeId ? opts.customStart.name : '')}</label>
+      <label>End ${placeSel('opt-end', opts.defaultEnd && opts.defaultEnd.placeId, 'Back to start')}</label>
+      <details class="places-box"><summary class="settings-btn"><span class="ic">&#9873;</span>Places<span class="chev">▾</span></summary>
+        <div id="places-list">${readPlaces().map((p) => `<div class="place-row"><span>${escapeHtml(p.name)}</span><button type="button" class="place-del" data-id="${escapeHtml(p.id)}" aria-label="Delete ${escapeHtml(p.name)}">&times;</button></div>`).join('') || '<div class="meta">No saved places yet.</div>'}</div>
+        <input id="place-name" type="text" placeholder="Name (Home, Masjid…)" autocomplete="off">
+        <input id="place-addr" type="text" placeholder="Address (leave blank to use my location)" autocomplete="off">
+        <button type="button" id="place-save" class="nav-btn set-end">Save place</button>
+      </details>
       <button id="opt-rerun" type="button" class="nav-btn primary">Optimize</button>
       ${window.syncSettingsHtml ? syncSettingsHtml() : ''}
       <button id="opt-refresh" type="button" class="nav-btn set-end">Refresh data</button>
@@ -642,8 +695,47 @@ function refreshSettingsUi() {
   const rerun = document.getElementById('opt-rerun');
   rerun.disabled = optimizing;
   rerun.addEventListener('click', () => optimizeCurrentView(mapRef));
-  const clr = document.getElementById('opt-clear-start');
-  if (clr) clr.addEventListener('click', (e) => { e.preventDefault(); clearRouteStart(); });
+  const placeById = (id) => readPlaces().find((p) => p.id === id);
+  document.getElementById('opt-start').addEventListener('change', (e) => {
+    const p = placeById(e.target.value);
+    opts.customStart = p ? { lat: p.lat, lng: p.lng, name: p.name, placeId: p.id } : null;
+    saveOpts();
+    drawStartMarker();
+    showToast(p ? 'Routes will start at ' + p.name : 'Routes start from your location');
+  });
+  document.getElementById('opt-end').addEventListener('change', (e) => {
+    const p = placeById(e.target.value);
+    opts.defaultEnd = p ? { lat: p.lat, lng: p.lng, name: p.name, placeId: p.id } : null;
+    saveOpts();
+    if (currentRoute && !optimizing) rerouteWithEnd(p ? { lat: p.lat, lng: p.lng, name: p.name } : null);
+    else showToast(p ? 'Routes will end at ' + p.name : 'Routes return to start');
+  });
+  document.querySelectorAll('#places-list .place-del').forEach((b) => b.addEventListener('click', () => {
+    deletePlace(b.dataset.id);
+    refreshSettingsUi();
+    const det = document.querySelector('.places-box');
+    if (det) det.open = true;
+  }));
+  const saveBtn = document.getElementById('place-save');
+  if (saveBtn) saveBtn.addEventListener('click', async () => {
+    const name = document.getElementById('place-name').value;
+    const addr = document.getElementById('place-addr').value.trim();
+    if (!name.trim()) { showToast('Give the place a name first', { type: 'error' }); return; }
+    let pt = null;
+    try {
+      if (addr) pt = await geocodeAddress(addr);
+      else pt = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) { reject(new Error('Location unavailable')); return; }
+        navigator.geolocation.getCurrentPosition((p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+          () => reject(new Error('Location unavailable')), { enableHighAccuracy: true, timeout: 10000 });
+      });
+    } catch (err) { showToast(err.message, { type: 'error' }); return; }
+    if (addPlace(name, pt.lat, pt.lng)) {
+      refreshSettingsUi();
+      const det = document.querySelector('.places-box');
+      if (det) det.open = true;
+    }
+  });
   if (window.bindSyncSettings) bindSyncSettings();
 }
 
