@@ -186,8 +186,8 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 **Open items (pick up here):**
 1. ~~Confirm Apple Go~~ confirmed working. Remaining curiosity only: the Apple "12 stops vs 15" count seen in an earlier screenshot (likely moot now).
-2. **Owner setup for quick-log (step 5):** deploy `apps-script/Code.gs` on a copy of the sheet first, then fill `syncUrl`/`syncToken` in `config.js`. Until then quick-log chips are hidden. Keep `ALLOWED_CODES` (Code.gs) = `QUICK_CODES` (writeback.js); rotate the token if leaked.
-3. **Quick-log Undo** only un-marks locally; the sheet write stays. Drop Undo for quick-log or queue a restoring write.
+2. **Quick-log (step 5, v0.18.0) needs no owner setup:** it posts to the public Visit Details Google Form (`https://docs.google.com/forms/d/e/1FAIpQLSe_TQfBBhpLky9XyTz0SuSsJpcgfF61pS8onUX4RgQxEITOpA/formResponse`; entry ids in `ENTRY` in writeback.js: db 647159166, rowid 589985326, name 459245489, code 607683347, Status repeated 1275295467, Language 2108730671, Comments 322317336; no date field, form timestamp used; Status is always resent so the pipeline does not wipe it). `apps-script/Code.gs` is now an optional standalone relay (confirmed delivery); fill `syncUrl`/`syncToken` in `config.js` to use it. Keep `ENTRY`/`FORM_URL` in sync between writeback.js and Code.gs and re-read VisitDetails.html if the owner edits the form. Risk: the form/pipeline is owned by someone else; if it changes, direct mode fails silently (opaque response), so use the relay to see errors. **Not yet verified live:** compare the Network payload with Visit Details and log one real visit.
+3. **Quick-log Undo** only un-marks locally; a form submission cannot be withdrawn. To correct, submit Visit Details again.
 4. **Performance at ~45k rows:** `applyFilters` recreates every marker (marker clustering / viewport rendering); debounce the filter name input.
 5. **Offline route list without the map** (render the route sheet from localStorage before Maps loads).
 6. **PWA polish:** real icons (current ones are placeholders); one source of truth for version strings.
