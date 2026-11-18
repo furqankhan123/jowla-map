@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.14]
+- New app icons (pin with a dotted route): 192, 512, a full-bleed maskable 512 with safe zone, and the 180 apple-touch icon; regenerate with tools/make-icons.py.
+
 ## [0.19.13]
 - Cluster suggestions: the empty state names the active filters and the recent-visit window, with a Clear filters button.
 
