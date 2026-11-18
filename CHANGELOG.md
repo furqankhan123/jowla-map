@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.4]
+- Optimize usually needs one Routes API call: stops are pre-trimmed with a free distance estimate, a second call only happens if the real total is over 10 percent past the target, and an over-target result is flagged.
+
 ## [0.19.3]
 - Faster filtering: names, statuses and visit dates are parsed once at load, bounds checks are numeric, and the name filter count is debounced.
 

@@ -71,7 +71,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.19.3';
+const APP_VERSION = '0.19.4';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -210,16 +210,28 @@ async function runOptimization(map, start, bounds, source) {
 
   // Fit-to-duration: if projected time exceeds the target, drop the farthest
   // stops (proportionally) and re-optimize, up to MAX_FIT_ITERATIONS times.
+  // Cheap pre-trim (no API cost): keep the largest nearest-first prefix whose estimated
+  // tour fits the target, so the first Routes call usually already fits.
+  if (opts.targetMins) {
+    while (candidates.length > 2) {
+      const mode = isDenseCluster(candidates) ? 'WALK' : 'DRIVE';
+      if (estimateTourMins(start, candidates, mode) <= opts.targetMins) break;
+      candidates = candidates.slice(0, candidates.length - 1);
+    }
+  }
   let result = null;
   for (let iter = 0; iter < MAX_FIT_ITERATIONS; iter++) {
     result = await requestRoute(start, candidates);
     if (!result) return;
-    if (!opts.targetMins || result.totalMins <= opts.targetMins || candidates.length <= 2) break;
+    if (!opts.targetMins || result.totalMins <= opts.targetMins * 1.1 || candidates.length <= 2) break;
     const perStop = result.totalMins / candidates.length;
     let keep = Math.max(2, Math.min(candidates.length - 1, Math.floor(opts.targetMins / perStop)));
     candidates = candidates.slice(0, keep); // already sorted nearest-first
   }
 
+  if (opts.targetMins && result.totalMins > opts.targetMins * 1.1) {
+    showToast('~' + result.totalMins + ' min (over the ' + opts.targetMins + ' min target)');
+  }
   const route = {
     stops: result.ordered.map(s => ({
       name: s.name, address: s.address, latitude: s.latitude, longtitude: s.longtitude,
@@ -458,6 +470,23 @@ function restoreLastRoute(map) {
     if (!route || Date.now() - route.savedAt > ROUTE_MAX_AGE_MS) return;
     renderRoute(map, route);
   } catch (e) {}
+}
+
+/** Rough tour time: nearest-neighbour path from start and back (haversine x 1.3 detour) + visits. */
+function estimateTourMins(start, cands, mode) {
+  const kmh = mode === 'WALK' ? 4.5 : 30;
+  let km = 0, cur = { lat: start.lat, lng: start.lng };
+  const left = cands.map((c) => ({ lat: c.latitude, lng: c.longtitude }));
+  while (left.length) {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < left.length; i++) {
+      const d = haversine(cur, left[i]);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    km += bd; cur = left.splice(bi, 1)[0];
+  }
+  km += haversine(cur, { lat: start.lat, lng: start.lng });
+  return (km * 1.3 / kmh) * 60 + cands.length * AVG_VISIT_MINS;
 }
 
 function isDenseCluster(points) {
