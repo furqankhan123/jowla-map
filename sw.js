@@ -1,5 +1,5 @@
 /* Jowla Map service worker. Bump CACHE_VERSION to invalidate caches. */
-const CACHE_VERSION = 'v0.21.2';
+const CACHE_VERSION = 'v0.21.3';
 const SHELL_CACHE = 'jowla-shell-' + CACHE_VERSION;
 const DATA_CACHE = 'jowla-data'; // unversioned: offline data survives deploys
 const SHELL = [
@@ -9,7 +9,7 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL)));
+  e.waitUntil(caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))));
   // No automatic skipWaiting: the page offers a Reload toast, then posts SKIP_WAITING.
 });
 

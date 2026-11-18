@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.21.3]
+- Service worker installs fetch fresh copies (bypassing the browser HTTP cache) so an update never caches stale files.
+
 ## [0.21.2]
 - Fix: an unfiltered map no longer zooms out to the whole world (a few rows have coordinates far from DFW); a saved world-level view is ignored.
 
