@@ -38,13 +38,9 @@ function doPost(e) {
     add(ENTRY.name, String(body.name || ''));
     add(ENTRY.code, code);
     String(body.sts || '').split(',').forEach(function (x) { x = x.trim(); if (x) add(ENTRY.status, x); });
-    add(ENTRY.lang, '');
-    add(ENTRY.comments, '');
 
-    var res = UrlFetchApp.fetch(FORM_URL, {
-      method: 'post', payload: parts.join('&'),
-      contentType: 'application/x-www-form-urlencoded',
-      muteHttpExceptions: true, followRedirects: false
+    var res = UrlFetchApp.fetch(FORM_URL + '?' + parts.join('&'), {
+      method: 'get', muteHttpExceptions: true, followRedirects: false
     });
     var status = res.getResponseCode();
     if (status === 200 || status === 302) return json_({ ok: true, status: status });

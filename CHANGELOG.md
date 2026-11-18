@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.4]
+- Quick-log now submits like the real Visit Details form: a GET with the fields in the query string, and no empty Language/Comments (empty checkbox values caused 400).
+
 ## [0.18.3]
 - Quick-log sends the form fields as FormData (multipart) instead of a urlencoded body.
 
