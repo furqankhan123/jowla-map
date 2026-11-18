@@ -4,6 +4,18 @@ var visibleLocations = [];
 var markers = [];
 var frisco = {lat: 33.0597, lng: -96.7512};
 
+/** Cached lowercase/parsed fields so filter passes do no string/date work per row. */
+function setVisitMs(loc) {
+  var t = loc.visitdate ? new Date(loc.visitdate).getTime() : NaN;
+  loc._visitMs = isNaN(t) ? null : t;
+}
+function prepRow(loc) {
+  loc._name = (loc.name || '').toLowerCase();
+  loc._sts = (loc.sts || '').toLowerCase();
+  setVisitMs(loc);
+}
+window.setVisitMs = setVisitMs;
+
 function isDoNotVisit(loc) {
   var vc = (loc.visitcode || '').toString().toLowerCase();
   return vc.indexOf('do not visit') !== -1;
@@ -74,6 +86,7 @@ window.ledgerRecord = function (stop, on) {
     delete l[k];
     if (loc && loc._prevVisit !== undefined) { loc.visitdate = loc._prevVisit; loc._prevVisit = undefined; }
   }
+  if (loc) setVisitMs(loc);
   saveLedger(l);
 };
 
@@ -131,6 +144,7 @@ function initialiseMap() {
       location.rowid = this[21];
       if (isDoNotVisit(location)) return;
       mergeLedger(location, ledger);
+      prepRow(location);
       locations.push(location);
     });
     saveLedger(ledger);
@@ -169,18 +183,17 @@ function matchesFilters(loc, f) {
   var now = new Date();
   if (f.city && loc.city !== f.city) return false;
   if (f.status) {
-    var s = (loc.sts || '').toLowerCase();
+    var s = loc._sts;
     if (f.status === 'S' && s.indexOf('student') === -1) return false;
     if (f.status === 'K' && s.indexOf('khususi') === -1) return false;
     if (f.status === 'F' && s.indexOf('follow') === -1) return false;
     if (f.status === 'W' && s.indexOf('week') === -1) return false;
   }
-  if (f.name && !(loc.name || '').toLowerCase().includes(f.name.toLowerCase())) return false;
+  if (f.name && loc._name.indexOf(f.name.toLowerCase()) === -1) return false;
   if (f.visited) {
     // Never-visited (or unparseable date) counts as "not visited in the last N days".
-    var visit = loc.visitdate ? new Date(loc.visitdate) : null;
-    if (visit && !isNaN(visit.getTime())) {
-      var days = (now - visit) / (1000 * 60 * 60 * 24);
+    if (loc._visitMs != null) {
+      var days = (now - loc._visitMs) / (1000 * 60 * 60 * 24);
       if (f.visited === '0') return false;
       if (f.visited === '1' && days < 30) return false;
       if (f.visited === '3' && days < 90) return false;
@@ -260,7 +273,11 @@ function ensureFilterSheet() {
     document.getElementById('fs-count').textContent = countMatches(read()) + ' stops match';
   };
   ['fs-city', 'fs-status', 'fs-visited'].forEach(function(id) { document.getElementById(id).addEventListener('change', updateCount); });
-  document.getElementById('fs-name').addEventListener('input', updateCount);
+  var cntTimer = null;
+  document.getElementById('fs-name').addEventListener('input', function() {
+    clearTimeout(cntTimer);
+    cntTimer = setTimeout(updateCount, 200);
+  });
   document.getElementById('fs-close').addEventListener('click', closeFilterSheet);
   document.getElementById('fs-reset').addEventListener('click', function() {
     fillFilterSheet({ city: '', status: '', name: '', visited: '' });

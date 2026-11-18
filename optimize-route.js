@@ -71,7 +71,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.19.2';
+const APP_VERSION = '0.19.3';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -177,18 +177,17 @@ function dedupeByLatLng(arr) {
 function getStopsInBounds(bounds, allLocations) {
   if (!allLocations || !allLocations.length) return [];
 
-  const now = new Date();
+  const now = Date.now();
+  const ne = bounds.getNorthEast(), sw = bounds.getSouthWest();
+  const north = ne.lat(), south = sw.lat(), east = ne.lng(), west = sw.lng();
   return allLocations.filter((loc) => {
     if (!loc.latitude || !loc.longtitude) return false;
     if (isDoNotVisit(loc)) return false;
-    const latLng = new google.maps.LatLng(loc.latitude, loc.longtitude);
-    if (!bounds.contains(latLng)) return false;
-    if (loc.visitdate && !opts.includeRecent) {
-      const visit = new Date(loc.visitdate);
-      if (!isNaN(visit.getTime())) {
-        const daysAgo = (now - visit) / (1000 * 60 * 60 * 24);
-        if (daysAgo < opts.recentDays) return false;
-      }
+    if (loc.latitude < south || loc.latitude > north) return false;
+    if (west <= east ? (loc.longtitude < west || loc.longtitude > east) : (loc.longtitude < west && loc.longtitude > east)) return false;
+    if (!opts.includeRecent) {
+      const ms = loc._visitMs !== undefined ? loc._visitMs : (loc.visitdate ? new Date(loc.visitdate).getTime() : NaN);
+      if (ms != null && !isNaN(ms) && (now - ms) / 864e5 < opts.recentDays) return false;
     }
     return true;
   });

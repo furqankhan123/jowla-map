@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.3]
+- Faster filtering: names, statuses and visit dates are parsed once at load, bounds checks are numeric, and the name filter count is debounced.
+
 ## [0.19.2]
 - Removed leftover Set as start text and code; settings show your location as the start (a saved custom start can still be cleared); done toggle on a row now also records the visit locally; route renders once.
 

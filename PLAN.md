@@ -212,7 +212,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 | 6.6 | Data load failure = blank page; map waits on data (DONE 0.19.1) | bug | S | - |
 | 6.7 | Stale custom-start UI text and dead code (DONE 0.19.2) | cleanup | S | - |
 | 6.8 | "More than N days" filter drops never-visited stops (DONE 0.18.7) | bug? | S | - |
-| 6.9 | Precompute row fields + debounce filters | perf | S | - |
+| 6.9 | Precompute row fields + debounce filters (DONE 0.19.3) | perf | S | - |
 | 6.10 | Marker rendering at 45k rows (Advanced Markers + clustering) | perf | L | 6.9 |
 | 6.11 | Fewer Routes API calls per Optimize | perf/cost | S | - |
 | 6.12 | Service worker update prompt; keep offline data across deploys | reliability | S | - |
