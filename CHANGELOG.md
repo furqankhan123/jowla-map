@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.18.9]
+- ETAs and the "ends at" time now count from now starting at the first undone stop; done stops show a check mark; refreshed on every done/undo and each minute.
+
 ## [0.18.8]
 - Quick-log holds each submission 7 s; Undo within that window cancels it (nothing is sent). After that, Undo says to use Visit Details.
 

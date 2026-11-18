@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.18.8';
+const APP_VERSION = '0.18.9';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -367,6 +367,7 @@ function updateDoneUi() {
     if (b) b.textContent = done ? '✓' : '○';
   });
   routeMarkers.forEach((m, i) => m.setOpacity(stops[i] && stops[i].done ? 0.35 : 1));
+  updateEtas();
   const next = stops.find((s) => !s.done);
   const el = document.getElementById('route-primary');
   if (!el) return;
@@ -659,6 +660,43 @@ function openEndPicker() {
 function fmtTime(d) {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
+
+/** ETAs from now, starting at the first undone stop; done stops get null. */
+function computeEtas(stops, legSecs, now) {
+  const etas = []; let t = now; let endEta = null;
+  const hasLegs = legSecs && legSecs.length;
+  stops.forEach((s, i) => {
+    if (s.done) { etas.push(null); return; }
+    t += ((legSecs && legSecs[i]) || 0) * 1000;
+    etas.push(hasLegs ? t : null);
+    t += AVG_VISIT_MINS * 60 * 1000;
+  });
+  if (legSecs && legSecs.length > stops.length) endEta = t + (legSecs[stops.length] || 0) * 1000;
+  return { etas, endEta };
+}
+function routeSummaryText(route) {
+  const modeText = route.travelMode === 'WALK' ? 'walking' : 'driving';
+  const left = route.stops.filter((x) => !x.done).length;
+  const { endEta } = computeEtas(route.stops, route.legSecs, Date.now());
+  const endName = route.end ? route.end.name : (route.start ? 'start' : '');
+  const endTxt = endEta && endName ? ` · ends at ${endName} ${fmtTime(new Date(endEta))}` : '';
+  const count = left < route.stops.length ? `${left} of ${route.stops.length}` : `${route.stops.length}`;
+  return `${count} stops · ~${route.totalMins} min · ${modeText}${endTxt}`;
+}
+function updateEtas() {
+  if (!currentRoute) return;
+  const { etas, endEta } = computeEtas(currentRoute.stops, currentRoute.legSecs, Date.now());
+  document.querySelectorAll('#route-results .stop-row').forEach((row) => {
+    const el = row.querySelector('.eta');
+    if (!el) return;
+    if (row.classList.contains('end-row')) { if (endEta) el.textContent = fmtTime(new Date(endEta)); return; }
+    const v = etas[+row.dataset.i];
+    el.textContent = v ? fmtTime(new Date(v)) : '\u2713';
+  });
+  const sum = document.getElementById('route-summary');
+  if (sum) sum.textContent = routeSummaryText(currentRoute);
+}
+setInterval(updateEtas, 60000);
 
 function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end) {
   const panel = ensurePanel();
