@@ -1,7 +1,7 @@
 # Changelog
 
 ## [0.19.9]
-- jQuery removed (fetch + URLSearchParams-style parsing); old URL filter formats still work.
+- jQuery removed (fetch plus the existing regex URL parser); old URL filter formats still work.
 
 ## [0.19.8]
 - Single config.js now holds the API keys, sheet, form and version; Maps loads from config; tools/bump-version.js bumps every version string.
