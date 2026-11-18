@@ -91,11 +91,12 @@ window.ledgerRecord = function (stop, on) {
 };
 
 function initialiseMap() {
-  $.urlParam = function(name){
+  function urlParam(name) {
     var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
     if (results == null) return null;
     return results[1] || 0;
-  };
+  }
+  window.urlParam = urlParam;
 
   var VIEW_KEY = 'jowla-last-view';
   var view = null;
@@ -123,27 +124,30 @@ function initialiseMap() {
   var SHEET_URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + C.sheetId + '/values/' + C.sheetRange + '?key=' + C.sheetsKey;
 
   var lastLoad = 0;
+  function fetchSheet() {
+    return fetch(SHEET_URL).then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
   function onData(data, isRefresh) {
     var ledger = readLedger();
     locations = [];
-    $(data.values).each(function() {
+    (data.values || []).forEach(function(row) {
       var location = {};
-      location.db = this[0];
-      location.id = this[2];
-      location.name = this[3];
-      location.address = this[4];
-      location.add = encodeURIComponent(this[4]);
-      location.latitude = parseFloat(this[5]);
-      location.longtitude = parseFloat(this[6]);
-      location.city = this[7];
-      location.zip = this[8];
-      location.unit = this[11];
-      location.marker = this[12];
-      location.sts = this[13];
-      location.visitcode = this[14];
-      location.comments = this[15];
-      location.visitdate = this[16];
-      location.rowid = this[21];
+      location.db = row[0];
+      location.id = row[2];
+      location.name = row[3];
+      location.address = row[4];
+      location.add = encodeURIComponent(row[4]);
+      location.latitude = parseFloat(row[5]);
+      location.longtitude = parseFloat(row[6]);
+      location.city = row[7];
+      location.zip = row[8];
+      location.unit = row[11];
+      location.marker = row[12];
+      location.sts = row[13];
+      location.visitcode = row[14];
+      location.comments = row[15];
+      location.visitdate = row[16];
+      location.rowid = row[21];
       if (isDoNotVisit(location)) return;
       mergeLedger(location, ledger);
       prepRow(location);
@@ -168,10 +172,10 @@ function initialiseMap() {
   /** Re-fetch the sheet, merge the local ledger, re-apply current filters; route and viewport untouched. */
   window.refreshData = function(silent) {
     if (!navigator.onLine) { if (!silent && window.showToast) showToast('Offline: cannot refresh', { type: 'error' }); return; }
-    $.getJSON(SHEET_URL).done(function(data) {
+    fetchSheet().then(function(data) {
       onData(data, true);
       if (!silent && window.showToast) showToast('Data refreshed: ' + locations.length + ' stops');
-    }).fail(function() {
+    }).catch(function() {
       if (!silent && window.showToast) showToast('Refresh failed', { type: 'error' });
     });
   };
@@ -181,7 +185,7 @@ function initialiseMap() {
 
   function loadData() {
     if (window.showToast) showToast('Loading stops…', { sticky: true });
-    $.getJSON(SHEET_URL).done(onData).fail(function() {
+    fetchSheet().then(function(d) { onData(d); }).catch(function() {
       if (window.showToast) showToast('Could not load stops', { type: 'error', sticky: true, action: { label: 'Retry', onClick: loadData } });
     });
   }
@@ -227,10 +231,10 @@ function matchesFilters(loc, f) {
 var currentFilters = { city: '', status: '', name: '', visited: '' };
 
 function applyUrlFilters() {
-  var city = parseCityParam($.urlParam('City'));
-  var stts = $.urlParam('S');
-  var searchname = $.urlParam('F');
-  var visited = $.urlParam('P');
+  var city = parseCityParam(urlParam('City'));
+  var stts = urlParam('S');
+  var searchname = urlParam('F');
+  var visited = urlParam('P');
   if (searchname) {
     try { searchname = decodeURIComponent(searchname); } catch(e) {}
   }

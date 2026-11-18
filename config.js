@@ -4,7 +4,7 @@
    Keep formUrl / entry in sync with apps-script/Code.gs and VisitDetails.html.
    Later (plan 6.10): add mapId here for Advanced Markers. */
 window.JOWLA_CONFIG = {
-  version: '0.19.8',
+  version: '0.19.9',
   apiKey: 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ',      // Maps JavaScript, Routes, Places (New), Geocoding
   sheetsKey: 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ',   // Sheets (read only)
   sheetId: '1U7JJDnTvClhdpHCje29uLwTNCiBhdPfUPxzChbxoXNQ',

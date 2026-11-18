@@ -219,7 +219,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 | 6.13 | Refresh sheet data without reloading (DONE 0.19.6) | reliability | S | 6.2 |
 | 6.14 | Offline route list before Maps loads (DONE 0.19.7) | reliability | M | 6.6 |
 | 6.15 | One config + one version string (DONE 0.19.8) | maintenance | S | - |
-| 6.16 | Remove jQuery | maintenance | S | 6.15 |
+| 6.16 | Remove jQuery (DONE 0.19.9) | maintenance | S | 6.15 |
 | 6.17 | Unit tests for pure logic + CI | maintenance | M | 6.15 |
 | 6.18 | Shared city list for index.html | maintenance | S | - |
 | 6.19 | Travel mode chosen from stop spacing, not distance from start | feature | S | - |
