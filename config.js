@@ -4,7 +4,7 @@
    Keep formUrl / entry in sync with apps-script/Code.gs and VisitDetails.html.
    mapId is the Cloud Console Map ID used for Advanced Markers. */
 window.JOWLA_CONFIG = {
-  version: '0.21.1',
+  version: '0.21.2',
   apiKey: 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ',      // Maps JavaScript, Routes, Places (New), Geocoding
   sheetsKey: 'AIzaSyBWKjSZa8wcaEEqUrjk-opBhmEVxd6GbPQ',   // Sheets (read only)
   mapId: 'de08d2ec96ce5eb259d881cb',   // Advanced Markers (public, not a secret)

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.21.2]
+- Fix: an unfiltered map no longer zooms out to the whole world (a few rows have coordinates far from DFW); a saved world-level view is ignored.
+
 ## [0.21.1]
 - Travel mode now defaults to Drive (saved Auto settings are switched once); the Places address field suggests addresses as you type, like the end-point picker.
 

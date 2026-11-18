@@ -113,7 +113,7 @@ function initialiseMap() {
   var view = null;
   try { view = JSON.parse(localStorage.getItem(VIEW_KEY) || 'null'); } catch (e) {}
   var mapOptions = {
-    mapId: window.JOWLA_CONFIG.mapId, zoom: (view && view.zoom) || 16, center: (view && view.center) || frisco,
+    mapId: window.JOWLA_CONFIG.mapId, zoom: (view && view.zoom >= 6 && view.zoom) || 16, center: (view && view.zoom >= 6 && view.center) || frisco,
     gestureHandling: 'greedy', clickableIcons: false,
     mapTypeControl: false, streetViewControl: false, fullscreenControl: false, cameraControl: !window.matchMedia('(pointer: coarse)').matches,
     cameraControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
@@ -346,7 +346,9 @@ function setLocations(map, locs, keepView) {
   }
   markers = list;
   ensureClusterer(map).addMarkers(list);
-  if (!keepView && list.length > 1) map.fitBounds(bounds);
+  // Only fit when the set is small: a few mis-geocoded rows (other states/countries) would zoom
+  // an "All" view out to the whole world. Large sets keep the saved / default view.
+  if (!keepView && list.length > 1 && list.length < 2000) map.fitBounds(bounds);
 }
 
 function createMarker(map, location) {
