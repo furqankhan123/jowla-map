@@ -241,3 +241,7 @@ a.seg-btn.apple { background: #007aff; }
 #tour-card .tour-skip { background: #eef3fd; color: var(--blue); }
 #tour-card .tour-count { color: #777; font-size: 13px; }
 #end-sugg button.pick-end { display: block; width: 100%; min-height: 44px; margin-top: 6px; text-align: left; padding: 8px 12px; background: #fff; border: 1px solid #c6d6f5; border-radius: 8px; font-size: 15px; color: #222; cursor: pointer; }
+
+#replan-choice { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; justify-content: center; }
+#replan-choice .rc-card { background: #fff; width: 100%; max-width: 480px; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; display: flex; flex-direction: column; gap: 10px; }
+#replan-choice .nav-btn.alt { background: #eef3fd; color: var(--blue); border: 1px solid var(--blue); }

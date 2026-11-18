@@ -208,7 +208,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 | 6.2 | Visited stops come back in the next Optimize (DONE 0.18.6) | bug | M | - |
 | 6.3 | Quick-log real Undo window (DONE 0.18.8) | bug | S | 6.2 |
 | 6.4 | ETAs ignore progress (DONE 0.18.9) | bug | S | - |
-| 6.5 | Optimize silently replaces a route in progress; "Continue from here" | bug/UX | S | 6.2 |
+| 6.5 | Optimize silently replaces a route in progress; "Continue from here" (DONE 0.19.0) | bug/UX | S | 6.2 |
 | 6.6 | Data load failure = blank page; map waits on data | bug | S | - |
 | 6.7 | Stale custom-start UI text and dead code | cleanup | S | - |
 | 6.8 | "More than N days" filter drops never-visited stops (DONE 0.18.7) | bug? | S | - |

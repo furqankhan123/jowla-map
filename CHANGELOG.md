@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.19.0]
+- Optimize during a route in progress now asks: re-plan the remaining stops from your position (done stops kept), start a new route, or cancel. When all stops are done, "Find more stops" appears.
+
 ## [0.18.9]
 - ETAs and the "ends at" time now count from now starting at the first undone stop; done stops show a check mark; refreshed on every done/undo and each minute.
 

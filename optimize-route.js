@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.18.9';
+const APP_VERSION = '0.19.0';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -121,8 +121,14 @@ function addOptimizeControl(map) {
   restoreLastRoute(map);
 }
 
+let skipReplanPrompt = false;
 function optimizeCurrentView(map, override) {
   if (optimizing) return;
+  if (!skipReplanPrompt && currentRoute && currentRoute.stops.some((x) => !x.done)) {
+    askReplan(map, override);
+    return;
+  }
+  skipReplanPrompt = false;
   const bounds = override ? override.bounds : map.getBounds();
   if (!bounds) {
     showToast('Map not ready yet', { type: 'error' });
@@ -298,6 +304,64 @@ async function requestRoute(start, candidates, endPoint) {
 
 let currentRoute = null;
 let freshRoute = false; // true only right after a new Optimize: open at peek
+/** Mid-route Optimize: re-plan the remaining stops, start a new route, or cancel. */
+function askReplan(map, override) {
+  const old = document.getElementById('replan-choice');
+  if (old) old.remove();
+  const left = currentRoute.stops.filter((x) => !x.done).length;
+  const box = document.createElement('div');
+  box.id = 'replan-choice';
+  box.innerHTML = `<div class="rc-card"><div class="meta">A route is in progress (${left} stop${left === 1 ? '' : 's'} left).</div>` +
+    `<button type="button" class="nav-btn" data-a="replan">Re-plan remaining ${left} from here</button>` +
+    `<button type="button" class="nav-btn alt" data-a="new">New route</button>` +
+    `<button type="button" class="nav-btn alt" data-a="cancel">Cancel</button></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (ev) => {
+    const a = ev.target.closest('button[data-a]');
+    if (!a && ev.target !== box) return;
+    box.remove();
+    const act = a ? a.dataset.a : 'cancel';
+    if (act === 'replan') replanRemaining();
+    else if (act === 'new') { skipReplanPrompt = true; optimizeCurrentView(map, override); }
+  });
+}
+/** Reroute only the undone stops from the current position; done stops stay as they are. */
+function replanRemaining() {
+  if (optimizing || !currentRoute) return;
+  const old = currentRoute;
+  const done = old.stops.filter((x) => x.done);
+  const todo = old.stops.filter((x) => !x.done);
+  if (!todo.length) return;
+  setBusy(true);
+  const go = async (pos) => {
+    try {
+      const cands = todo.map((x) => ({ ...x, dist: haversine(pos, { lat: x.latitude, lng: x.longtitude }) }));
+      const end = old.end ? { lat: old.end.lat, lng: old.end.lng, name: old.end.name } : null;
+      const r = await requestRoute(pos, cands, end);
+      if (!r) return;
+      const strip = (x) => ({
+        name: x.name, address: x.address, latitude: x.latitude, longtitude: x.longtitude,
+        db: x.db, rowid: x.rowid, sts: x.sts, done: false
+      });
+      const route = {
+        stops: done.concat(r.ordered.map(strip)),
+        legSecs: done.map(() => 0).concat(r.legSecs),
+        totalMins: r.totalMins, travelMode: r.travelMode, start: pos,
+        end: old.end, encoded: r.encoded, savedAt: Date.now()
+      };
+      persistRouteObj(route);
+      renderRoute(mapRef, route);
+      showToast('Re-planned ' + todo.length + ' remaining stops');
+    } catch (e) {
+      showToast('Re-plan failed: ' + e.message, { type: 'error' });
+    } finally { setBusy(false); }
+  };
+  const fb = () => go(old.start);
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((p) => go({ lat: p.coords.latitude, lng: p.coords.longitude }), fb,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  } else fb();
+}
 /** Re-optimize the current stops so the route ends at `endPoint` {lat,lng,name} (null = back to start). */
 async function rerouteWithEnd(endPoint) {
   if (optimizing || !currentRoute) return;
@@ -371,7 +435,12 @@ function updateDoneUi() {
   const next = stops.find((s) => !s.done);
   const el = document.getElementById('route-primary');
   if (!el) return;
-  if (!next) { el.innerHTML = '<div class="meta">All stops done 🎉</div>'; return; }
+  if (!next) {
+    el.innerHTML = '<div class="meta">All stops done 🎉</div><button type="button" class="nav-btn" id="find-more">Find more stops</button>';
+    const fm = document.getElementById('find-more');
+    if (fm) fm.addEventListener('click', () => { skipReplanPrompt = true; optimizeCurrentView(mapRef); });
+    return;
+  }
   const n = stops.indexOf(next) + 1;
   const vUrl = window.visitDetailsUrl ? visitDetailsUrl(next) : '';
   el.innerHTML = `<a class="nav-btn${navButtons(next.latitude, next.longtitude).primary.app === 'apple' ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Go: ${n}. ${escapeHtml(next.name || next.address || 'Stop')}</a>` +
