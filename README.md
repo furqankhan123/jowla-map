@@ -22,7 +22,9 @@ The loop this targets, and how each feature shortens it:
 - Visit → Next flow with Undo toast; done state persists across reloads.
 - Google Maps and Apple Maps handoff (preferred app setting; routes split into numbered segments).
 - First-run walkthrough tour; installable PWA.
-- Mobile-first bottom sheet (peek/half/full).
+- Mobile-first bottom sheet (peek/half/full); a list button reopens a closed route sheet.
+- Quick-log chips (No Response / Left Message / Gave Targheeb) under the next stop submit the public Visit Details Google Form directly (no setup, offline queue); the sheet records the visit via the owner's existing form pipeline.
+- Map camera control shown bottom-left on desktop (hidden on touchscreens).
 
 ## A typical session
 1. Open `newindex.html`, tap **Optimize**.
@@ -37,7 +39,7 @@ The loop this targets, and how each feature shortens it:
 - `optimize-route.js`: Optimize, route panel, Log → Next, end point, settings
 - `segments.js`, `nav.js`: Google/Apple URL builders (tested in `tests/`) and the preferred-app helper
 - `cluster.js`, `writeback.js`, `tour.js`, `config.js`, `sw.js`: clusters, quick-log sync, tour, deployment config, service worker
-- `apps-script/Code.gs`: sheet write-back web app
+- `apps-script/Code.gs`: optional relay for confirmed quick-log delivery (not needed; direct mode works)
 - `map.css`: styles
 - `PLAN.md`: roadmap and **session handoff** (start here to continue work)
 - `CHANGELOG.md`: release notes
