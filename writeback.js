@@ -38,9 +38,9 @@ function sheetDate(d) {
   return (d || new Date()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-/** Form body identical to what Visit Details submits (Language/Comments empty). */
+/** Query params identical to what Visit Details submits (its form is a GET). */
 function buildFormBody(item) {
-  const b = new FormData();
+  const b = new URLSearchParams();
   b.append(ENTRY.db, item.db || '');
   b.append(ENTRY.rowid, String(item.rowid));
   b.append(ENTRY.name, item.name || '');
@@ -48,8 +48,7 @@ function buildFormBody(item) {
   // Always resend current Status so the form pipeline doesn't wipe it.
   String(item.sts || '').split(',').map((x) => x.trim()).filter(Boolean)
     .forEach((x) => b.append(ENTRY.status, x));
-  b.append(ENTRY.lang, '');
-  b.append(ENTRY.comments, '');
+  // Language/Comments are omitted when empty, like the real form (empty checkbox value = 400).
   return b;
 }
 
@@ -70,7 +69,7 @@ async function sendItem(item) {
     return { ok, fatal: !ok && !!data.error && data.error !== 'unauthorized' };
   }
   // Direct: opaque no-cors response; a resolved fetch counts as delivered.
-  await fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: buildFormBody(item) });
+  await fetch(FORM_URL + '?' + buildFormBody(item).toString(), { mode: 'no-cors' });
   return { ok: true, fatal: false };
 }
 
