@@ -79,7 +79,7 @@ function clearRouteOverlays() {
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
 }
 
-const APP_VERSION = '0.18.1';
+const APP_VERSION = '0.18.2';
 
 let toastTimer = null;
 function showToast(msg, o) {
@@ -494,10 +494,16 @@ function ensurePanel() {
     else setSheet(currentSheet() === 'peek' ? 'half' : 'peek');
     syncMin();
   });
+  document.getElementById('route-fab').addEventListener('click', () => {
+    panel.classList.add('visible');
+    document.body.classList.remove('no-sheet', 'route-closed');
+    setSheet(savedSheet());
+  });
   document.getElementById('route-close-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     panel.classList.remove('visible', 'minimized');
     document.body.classList.add('no-sheet');
+    if (currentRoute) document.body.classList.add('route-closed');
     document.body.classList.remove('sheet-expanded'); // otherwise the floating buttons stay hidden
     syncMin();
   });
@@ -741,7 +747,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
 
   panel.classList.remove('minimized');
   panel.classList.add('visible');
-  document.body.classList.remove('no-sheet');
+  document.body.classList.remove('no-sheet', 'route-closed');
   setSheet(freshRoute ? 'peek' : savedSheet());
   freshRoute = false;
   if (scroller) scroller.scrollTop = keepScroll;
@@ -756,7 +762,7 @@ window.clearRoute = function () {
   const panel = document.getElementById('route-panel');
   if (panel) panel.classList.remove('visible', 'minimized');
   document.body.classList.add('no-sheet');
-  document.body.classList.remove('sheet-expanded');
+  document.body.classList.remove('sheet-expanded', 'route-closed');
 };
 window.addOptimizeControl = addOptimizeControl;
 window.setRouteStart = setRouteStart;

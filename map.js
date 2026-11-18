@@ -83,6 +83,7 @@ function initialiseMap() {
       zoom: 16, center: frisco,
       gestureHandling: 'greedy', clickableIcons: false,
       mapTypeControl: false, streetViewControl: false, fullscreenControl: false, cameraControl: !window.matchMedia('(pointer: coarse)').matches,
+      cameraControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
       zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER }
     };
     map = new google.maps.Map(document.getElementById('map'), mapOptions);

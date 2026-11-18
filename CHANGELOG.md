@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.18.2]
+- Camera control moved to the bottom-left so it is not covered by the buttons and route list.
+- New list button reopens a closed route sheet.
+
 ## [0.18.1]
 - Map camera control is shown again on non-touch devices (desktop); still hidden on touchscreens.
 
