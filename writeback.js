@@ -136,6 +136,7 @@ function quickLog(stop, code) {
     sendAfter: now + UNDO_MS
   });
   writeQueue(q);
+  if (window.ledgerRecord) ledgerRecord(stop, true);
   if (window.markRouteStopDone) markRouteStopDone(stop);
   if (window.showToast) showToast(navigator.onLine ? 'Saving: ' + code : 'Offline: will save when back online');
   setTimeout(() => flushQueue().then(() => {

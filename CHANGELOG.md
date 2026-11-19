@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.23.1]
+- 7.12: gmp-click, loading=async, toast fix, quickLog ledger
+
 ## [0.23.0]
 - 7.9: Stop choice setting (Nearest / Most visits per hour)
 

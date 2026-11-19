@@ -173,7 +173,8 @@ function initialiseMap() {
     });
     saveLedger(ledger);
     console.log('locations size (after DNV filter) ' + locations.length);
-    if (window.hideToast) hideToast();
+    var tEl = document.getElementById('toast');
+    if (window.hideToast && tEl && tEl.textContent === 'Loading stops…') hideToast();
     if (!navigator.onLine && window.showToast) showToast('Offline — showing saved data');
 
     lastLoad = Date.now();
@@ -363,7 +364,7 @@ function createMarker(map, location) {
   img.src = "https://maps.google.com/mapfiles/kml/paddle/" + location.marker + ".png";
   img.width = 40; img.height = 40; img.alt = ''; img.style.display = 'block';
   var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '' });
-  marker.addListener('click', function() {
+  marker.addEventListener('gmp-click', function() {
     window.__popupLoc = location;
     var e = escapeHtml;
     var nb = navButtons(location.latitude, location.longtitude);

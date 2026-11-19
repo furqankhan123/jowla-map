@@ -9,7 +9,7 @@
     <title>Jowla Map</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-    <link rel="stylesheet" href="map.css?v=0.23.0">
+    <link rel="stylesheet" href="map.css?v=0.23.1">
 </head>
 
 <body id="black">
@@ -26,19 +26,19 @@
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="vendor/markerclusterer-2.5.3.min.js"></script>
-<script src="config.js?v=0.23.0"></script>
-<script src="nav.js?v=0.23.0"></script>
-<script src="logic.js?v=0.23.0"></script>
-<script src="map.js?v=0.23.0"></script>
-<script src="segments.js?v=0.23.0"></script>
-<script src="optimize-route.js?v=0.23.0"></script>
-<script src="cluster.js?v=0.23.0"></script>
-<script src="tour.js?v=0.23.0"></script>
-<script src="writeback.js?v=0.23.0"></script>
+<script src="config.js?v=0.23.1"></script>
+<script src="nav.js?v=0.23.1"></script>
+<script src="logic.js?v=0.23.1"></script>
+<script src="map.js?v=0.23.1"></script>
+<script src="segments.js?v=0.23.1"></script>
+<script src="optimize-route.js?v=0.23.1"></script>
+<script src="cluster.js?v=0.23.1"></script>
+<script src="tour.js?v=0.23.1"></script>
+<script src="writeback.js?v=0.23.1"></script>
 <script>
 (function () {
   var s = document.createElement('script');
-  s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(window.JOWLA_CONFIG.apiKey) + '&libraries=geometry,marker&callback=initialiseMap';
+  s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(window.JOWLA_CONFIG.apiKey) + '&libraries=geometry,marker&loading=async&callback=initialiseMap';
   s.async = true; s.defer = true;
   document.head.appendChild(s);
 })();
