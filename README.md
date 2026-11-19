@@ -39,7 +39,7 @@ The loop this targets, and how each feature shortens it:
 ## Files
 - `index.html`: filters home page
 - `map.html`: map page
-- `map.js`: sheet loading, filters, markers, infowindow
+- `map.js`: sheet loading, filters (city typeahead), lazy markers (a cheap stand-in per row; the real marker is built only when the clusterer shows it, so the "All" view stays light), infowindow
 - `logic.js`: pure logic (filters, ETAs, tour estimate, travel mode, clusters, haversine), unit tested
 - `optimize-route.js`: Optimize, route panel, Log → Next, end point, settings
 - `segments.js`, `nav.js`: Google/Apple URL builders (tested in `tests/`) and the preferred-app helper
