@@ -254,14 +254,15 @@ function ensureFilterSheet() {
   if (el) return el;
   var cities = {};
   locations.forEach(function(l) { if (l.city) cities[l.city] = true; });
-  var cityOpts = '<option value="">All</option>' + Object.keys(cities).sort().map(function(c) {
-    return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>';
-  }).join('');
+  var cityList = Object.keys(cities).sort();
+  var cityByLower = {};
+  cityList.forEach(function(c) { cityByLower[c.toLowerCase()] = c; });
+  var cityOpts = cityList.map(function(c) { return '<option value="' + escapeHtml(c) + '"></option>'; }).join('');
   el = document.createElement('div');
   el.id = 'filter-sheet';
   el.innerHTML =
     '<div class="fs-head"><strong>Filters</strong><button type="button" id="fs-close" aria-label="Close">&times;</button></div>' +
-    '<label>City<select id="fs-city">' + cityOpts + '</select></label>' +
+    '<label>City<input id="fs-city" type="text" list="fs-city-list" placeholder="All cities (type to search)" autocomplete="off"><datalist id="fs-city-list">' + cityOpts + '</datalist></label>' +
     '<label>Status<select id="fs-status"><option value="">All</option><option value="S">Students</option><option value="K">Khususi</option><option value="F">Follow Ups</option><option value="W">3D</option></select></label>' +
     '<label>Visited<select id="fs-visited"><option value="">All</option><option value="0">Not Yet Visited</option><option value="6">More than 180 days</option><option value="3">More than 90 days</option><option value="1">More than 30 days</option></select></label>' +
     '<label>Name contains<input id="fs-name" type="text" placeholder="leave blank for all"></label>' +
@@ -270,8 +271,9 @@ function ensureFilterSheet() {
   document.body.appendChild(el);
 
   var read = function() {
+    var c = document.getElementById('fs-city').value.trim();
     return {
-      city: document.getElementById('fs-city').value,
+      city: c ? (cityByLower[c.toLowerCase()] || c) : '',
       status: document.getElementById('fs-status').value,
       visited: document.getElementById('fs-visited').value,
       name: document.getElementById('fs-name').value.trim()
@@ -280,12 +282,14 @@ function ensureFilterSheet() {
   var updateCount = function() {
     document.getElementById('fs-count').textContent = countMatches(read()) + ' stops match';
   };
-  ['fs-city', 'fs-status', 'fs-visited'].forEach(function(id) { document.getElementById(id).addEventListener('change', updateCount); });
+  ['fs-status', 'fs-visited'].forEach(function(id) { document.getElementById(id).addEventListener('change', updateCount); });
   var cntTimer = null;
-  document.getElementById('fs-name').addEventListener('input', function() {
+  var debounced = function() {
     clearTimeout(cntTimer);
     cntTimer = setTimeout(updateCount, 200);
-  });
+  };
+  document.getElementById('fs-name').addEventListener('input', debounced);
+  document.getElementById('fs-city').addEventListener('input', debounced);
   document.getElementById('fs-close').addEventListener('click', closeFilterSheet);
   document.getElementById('fs-reset').addEventListener('click', function() {
     fillFilterSheet({ city: '', status: '', name: '', visited: '' });
@@ -358,8 +362,7 @@ function setLocations(map, locs, keepView) {
   for (var i = 0; i < locs.length; i++) {
     var loc = locs[i];
     if (!loc.latitude || !loc.longtitude) continue;
-    var m = loc._marker || (loc._marker = createMarker(map, loc));
-    list.push(m);
+    list.push(loc._proxy || (loc._proxy = makeLazyMarker(map, loc)));
     bounds.extend({ lat: loc.latitude, lng: loc.longtitude });
   }
   markers = list;
@@ -381,11 +384,33 @@ function setLocations(map, locs, keepView) {
   }
 }
 
+/**
+ * Cheap stand-in the clusterer can hold by the tens of thousands. The real AdvancedMarkerElement
+ * (DOM node + image) is built only when the clusterer actually puts this point on the map, and
+ * kept (detached) afterwards. The clusterer treats non-advanced markers via getPosition/setMap/getVisible.
+ */
+function makeLazyMarker(map, loc) {
+  var pos = null, real = null;
+  return {
+    getPosition: function() { return pos || (pos = new google.maps.LatLng(+loc.latitude, +loc.longtitude)); },
+    getVisible: function() { return true; },
+    setMap: function(m) {
+      if (m) { if (!real) real = loc._marker = createMarker(m, loc); real.map = m; }
+      else if (real) real.map = null;
+    }
+  };
+}
+
+var pinTemplate = null;
 function createMarker(map, location) {
   var position = { lat: parseFloat(location.latitude), lng: parseFloat(location.longtitude) };
-  var img = document.createElement('img');
+  if (!pinTemplate) {
+    pinTemplate = document.createElement('img');
+    pinTemplate.width = 40; pinTemplate.height = 40; pinTemplate.alt = ''; pinTemplate.style.display = 'block';
+  }
+  var img = pinTemplate.cloneNode(false);
   img.src = "https://maps.google.com/mapfiles/kml/paddle/" + location.marker + ".png";
-  img.width = 40; img.height = 40; img.alt = ''; img.style.display = 'block';
+  img.loading = 'lazy';
   var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '', gmpClickable: true });
   marker.addEventListener('gmp-click', function() {
     window.__popupLoc = location;

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.12]
+- Lazy map markers (no crash on All) and city typeahead in filters
+
 ## [0.24.11]
 - Filters page fetches only the city column (fix 0.24.9 regression)
 
