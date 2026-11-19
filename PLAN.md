@@ -210,7 +210,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 Round 6 below is the ordered plan that was worked through; every item is DONE (6.10 live as 0.21.0) except 6.23 (deferred).
 
-## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; next: 7.12, then 7.10)
+## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; next: 7.10 (experimental))
 
 Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live site at 390x844 (load, tour, Optimize, sheet peek/half/full). Order rule as in Round 6: wrong-stop/visit-data issues first, then the main route sheet, then routing quality, then polish. Sizes: S < 1h, M a few hours, L a day+.
 
@@ -275,7 +275,7 @@ Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live sit
 ### 7.11 Display names in Title Case  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - Many names are ALL CAPS and wrap to three lines in the list. Show `toTitleCase(name)` in the list, the next-stop line and popups (display only; never change data sent to the form).
 
-### 7.12 Leftover handoff items  [DONE 0.23.1-0.23.2 except handoff item 1 (29k DOM markers), still open]
+### 7.12 Leftover handoff items  [DONE 0.23.1-0.23.2 and handoff item 1 (0.23.4: SuperClusterViewportAlgorithm, 39k -> 3-197 attached markers, live-verified)]
 - Handoff open items 1-4 are still open at 0.21.4 (the `gmp-click` warning still appears in the console on load). Do them as one cleanup release after 7.1-7.7. Also seen in the console: "Google Maps JavaScript API has been loaded directly without loading=async"; add `loading=async` to the dynamic script URL in `config.js`/the loader and check the `callback` path still runs.
 
 ## Round 6: code review findings (collected at 0.18.4; ALL DONE 0.18.5-0.21.0 except 6.23 deferred; live-tested at 0.21.4, see handoff)
