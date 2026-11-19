@@ -210,7 +210,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 Round 6 below is the ordered plan that was worked through; every item is DONE (6.10 live as 0.21.0) except 6.23 (deferred).
 
-## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; NOT STARTED)
+## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; next: 7.8, 7.9, 7.12, then 7.10)
 
 Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live site at 390x844 (load, tour, Optimize, sheet peek/half/full). Order rule as in Round 6: wrong-stop/visit-data issues first, then the main route sheet, then routing quality, then polish. Sizes: S < 1h, M a few hours, L a day+.
 
@@ -229,32 +229,32 @@ Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live sit
 | 7.11 | Display names in Title Case | polish | S | - |
 | 7.12 | Leftover handoff items 1-4 (DOM markers, toast, gmp-click, quickLog ledger) | cleanup | M | - |
 
-### 7.1 "[auto]: maybe rental" rows count as unvisited, ranked last
+### 7.1 "[auto]: maybe rental" rows count as unvisited, ranked last  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - **Finding (live data, 39,671 rows):** 384 rows have visitcode `[auto] comment update` and a comment starting `[auto]: maybe rental`. 378 have only that tag; 6 have human text after it (e.g. "No response", "Dog at home"). Their `visitdate` is the date the automation ran, not a visit, so today the recent-visit window (`getStopsInBounds` in [optimize-route.js](optimize-route.js)) and the Visited filter (`matchesFilters` in [logic.js](logic.js)) wrongly treat them as visited.
 - **Fix:** in `prepRow` ([map.js](map.js)) set `loc._auto = true` when visitcode contains `[auto]` and the comment, after removing the `[auto]: maybe rental` tag, is empty; for `_auto` rows set `_visitMs = null` so every filter and the recent-visit rule see them as never visited (keep the raw date for the popup). In `runOptimization`, sort `_auto` rows after real candidates (e.g. sort key `dist * 3`, or real rows first and auto rows only to fill up to `MAX_STOPS`). Route rows and the popup show a small grey "maybe rental" tag. Put the detection in `logic.js` (`isAutoVisit(loc)`) with a unit test using synthetic rows.
 - **Owner decision:** the 6 rows with human text after the tag. Recommended: treat them as real visits (keep their date), since a person added a note.
 - **Verify:** a synthetic auto row dated yesterday is eligible for Optimize and shows under "Not yet visited"; in a view with enough real unvisited stops, no auto rows are picked; with few, they fill the end of the list. The local ledger (6.2) still wins when the stop is actually logged.
 
-### 7.2 Next-stop name on its own line above Go / Log
+### 7.2 Next-stop name on its own line above Go / Log  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - **Finding:** the primary row is one green pill "Go: 1. <name>" next to "Log visit ✓"; long names get cut or wrap inside the button, and the name is the button label, so a tap on the name starts navigation.
 - **Fix:** in `updateDoneUi` ([optimize-route.js](optimize-route.js)) render `#route-primary` as: a line "Next · 1. Name · 5:21 PM" (bold name, ETA from `computeEtas`, wraps freely, not a link), then a row with **Go** (preferred app, icon + "Go") and **Log visit ✓**, then the quick-log chips. Same change for the offline route list (6.14).
 - **Verify:** 390px, short and very long (two-line) names: the buttons keep the same size and position; the tour's sheet step still points at the Go button.
 
-### 7.3 "ends at start 6:16 PM" -> "ends at 6:16 PM"
+### 7.3 "ends at start 6:16 PM" -> "ends at 6:16 PM"  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - Both `routeSummaryText` and the summary built in `showRoutePanel` ([optimize-route.js](optimize-route.js)) use `end.name`, which is the literal `'start'` for a round trip (`same: true`). Show the name only for a saved place or custom end ("ends at Home 6:16 PM"); for a round trip show "ends at 6:16 PM". Build the text in one helper so the two copies cannot drift.
 
-### 7.4 Shorter summary line
+### 7.4 Shorter summary line  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - "15 stops · ~58 min · driving · ends at start 6:16 PM" wraps to two lines at 390px and pushes the buttons down in peek. Use "15 stops · 58 min · 🚗 · ends 6:16 PM" (walk icon for WALK); full wording stays in the `title`/aria-label.
 
-### 7.5 Route stops readable over the clusterer
+### 7.5 Route stops readable over the clusterer  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - **Finding:** numbered route dots are blue circles like the cluster bubbles, and clusters sit on top of them (screenshot: route 11/14/15 hidden under "17", "3", "2" bubbles). With 15 stops the route is hard to follow.
 - **Fix:** while a route is shown, give route markers a higher `zIndex` than clusters and a distinct style (green fill or dark with white ring); add a "Hide other pins" toggle on by default during a route that removes the non-route markers from the clusterer (`clusterer.clearMarkers` / re-add on close). The next stop's dot is larger.
 - **Verify:** every route number is visible at the fitted zoom; closing the route restores all pins and clusters.
 
-### 7.6 Bigger, clearer done toggle
+### 7.6 Bigger, clearer done toggle  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - The row toggle is a small thin "○" (about 20px, low contrast). Make it a 44px tap target with a 24px outlined checkbox circle that fills green with ✓ when done; keep aria-pressed.
 
-### 7.7 "starts at GPS" after map-center fallback
+### 7.7 "starts at GPS" after map-center fallback  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - When geolocation fails, `optimizeCurrentView` falls back to the map center but the list still says "starts at GPS". Pass the start's source (`gps` / `center` / place name) into the route and show "starts at map center".
 
 ### 7.8 Fewer U-turns: GPS heading + arrive on the house's side (cheap, no extra cost)
@@ -272,7 +272,7 @@ Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live sit
 - **What we can do:** decode the returned polyline (already stored as `encoded`) and count sharp reversals (bearing change > 150° within ~50 m = U-turn) and left turns (change of -60° to -120°, right-hand traffic). Build a second order client-side ("street sweep": group stops by street name parsed from `address`, visit each street once in one direction, chain streets by nearest end, prefer right turns) and request it with `optimizeWaypointOrder: false` only when Google's order has 2 or more U-turns. Keep whichever has fewer `minutes + 1 min per U-turn + 0.3 min per left turn`. That is at most 2 Routes calls per Optimize; behind a setting "Fewer U-turns (uses one more request)".
 - **Verify:** the detector unit-tested on synthetic polylines; live comparison over 10 areas: U-turns and left turns per route before/after, and the added minutes.
 
-### 7.11 Display names in Title Case
+### 7.11 Display names in Title Case  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - Many names are ALL CAPS and wrap to three lines in the list. Show `toTitleCase(name)` in the list, the next-stop line and popups (display only; never change data sent to the form).
 
 ### 7.12 Leftover handoff items
