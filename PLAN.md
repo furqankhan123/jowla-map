@@ -235,8 +235,11 @@ Decisions: D1 delete and re-create the repo, D2 replace author email with the Gi
 ### Steps
 Followed the runbook (now deleted): a self-contained runbook for a fresh session (owner decisions D1-D4, backup, re-scan script, git-filter-repo with value-free regexes, branch/tag deletion, re-create the repo or force-push + GitHub Support, local cleanup, verification, a PII guard test). Summary: back up, rewrite, delete `claude/*` branches (and the tags), publish clean `main`, make the old SHAs 404, re-clone everywhere.
 
-### Residual risk outside git (owner decision)
-- `config.js` must ship the Sheets id and API key to the browser, so they stay public on Pages whatever the history says. An HTTP-referrer restriction only stops browsers; a script can send any `Referer`, so if the sheet is readable with that key, the full list of names and addresses is readable by anyone with the repo. Options: restrict the sheet's sharing and serve data through the Apps Script relay with a token, or accept the risk knowingly.
+### Residual risk outside git (D4 DECIDED 2026-11-18: accept, with mitigations)
+- The app must stay open access (no tokens, no sign-in for users), so the sheet rows are readable by anyone who can load the app or read `config.js`. A referrer restriction only stops browsers. Authentication (private sheet + Apps Script relay + token) was rejected by the owner for that reason.
+- **Mitigations to do (owner, Google Cloud console):** (1) use two separate API keys: the Maps/Routes/Places key for `apiKey` and a second key restricted to the Sheets API only for `sheetsKey` (today both fields hold the same key); (2) HTTP-referrer restrict both to `https://furqankhan123.github.io/jowla-map/*`; (3) set a low per-day quota on the Sheets API and a budget alert; (4) share the sheet "Anyone with the link: Viewer", never Editor; (5) rotate both keys now, because the old keys were public in the old repo history (the history is gone, but treat the keys as seen).
+- **Mitigation in code (optional, not started):** fetch only the columns the app uses instead of `A2:V` (see `onData` in `map.js`), so unused columns are not exposed.
+- Do not test the exposure by sending spoofed requests.
 
 ## Round 8: owner screenshots + improvement review (collected 2026-11-18 at 0.24.6)
 
