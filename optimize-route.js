@@ -91,7 +91,7 @@ let hideOtherPins = true;
 /** While a route is shown the other pins (and cluster bubbles) are removed so route numbers stay readable. */
 function applyPinVisibility() {
   if (!mapRef || !window.setLocations) return;
-  if (currentRoute && hideOtherPins) { if (window.clusterer) window.clusterer.clearMarkers(true); }
+  if (currentRoute && hideOtherPins) { if (window.clusterer) window.clusterer.clearMarkers(); }
   else setLocations(mapRef, window.visibleLocations || window.locations || [], true);
 }
 

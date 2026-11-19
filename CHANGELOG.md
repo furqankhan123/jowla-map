@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.1]
+- Hide other pins redraws immediately after a fresh route
+
 ## [0.24.0]
 - 7.10: experimental Fewer U-turns setting (turn detector + street sweep)
 
