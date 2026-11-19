@@ -173,7 +173,30 @@
     return median < 0.25 && diameter < 1.5 ? 'WALK' : 'DRIVE';
   }
 
+  /** Pick the stop set with the most visits per estimated minute (start -> set -> start).
+   *  cands: eligible stops (any order). Seeds are the start and the best clusters; for each seed the nearest
+   *  maxStops stops are trimmed to fit targetMins. Returns { stops, label, mins, perHour }. */
+  function bestStopSet(start, cands, mode, targetMins, maxStops, visitMins) {
+    if (!cands.length) return null;
+    var seeds = [{ lat: start.lat, lng: start.lng, label: 'Nearest' }];
+    findClusters(cands, 0.4, 4).slice(0, 5).forEach(function (c) {
+      seeds.push({ lat: c.centroid.lat, lng: c.centroid.lng, label: 'Best block: ' + c.count + ' stops' });
+    });
+    var best = null;
+    seeds.forEach(function (seed) {
+      var set = cands.map(function (c) { return { c: c, d: haversine(seed, { lat: c.latitude, lng: c.longtitude }) }; })
+        .sort(function (a, b) { return a.d - b.d; }).slice(0, maxStops).map(function (x) { return x.c; });
+      var mins = estimateTourMins(start, set, mode, visitMins);
+      while (set.length > 2 && targetMins && mins > targetMins) { set.pop(); mins = estimateTourMins(start, set, mode, visitMins); }
+      var perHour = set.length / mins * 60;
+      // Require a clear (5%) win over the first (nearest) set so ties stay with Nearest.
+      if (!best || perHour > best.perHour * 1.05) best = { stops: set, label: seed.label, mins: Math.round(mins), perHour: perHour };
+    });
+    return best;
+  }
+
   var api = {
+    bestStopSet: bestStopSet,
     isAutoVisit: isAutoVisit, parseCityParam: parseCityParam, matchesFilters: matchesFilters, filtersToQuery: filtersToQuery,
     computeEtas: computeEtas, estimateTourMins: estimateTourMins, haversine: haversine, findClusters: findClusters, pickTravelMode: pickTravelMode
   };

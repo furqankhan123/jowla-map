@@ -100,3 +100,16 @@ assert.strictEqual(L.isAutoVisit({ visitcode: '[auto] comment update', comments:
 assert.strictEqual(L.isAutoVisit({ visitcode: '[auto] comment update', comments: '[auto]: maybe rental. Dog at home' }), false);
 assert.strictEqual(L.isAutoVisit({ visitcode: 'No Response', comments: '' }), false);
 console.log('isAutoVisit ok');
+
+// --- bestStopSet: a far dense block beats a few scattered near stops
+(function () {
+  const start = { lat: 40, lng: -100 };
+  const near = [0, 1, 2].map((i) => ({ latitude: 40 + 0.004 * (i + 1), longtitude: -100 + 0.012 * i }));
+  const block = []; for (let i = 0; i < 12; i++) block.push({ latitude: 40.03 + 0.0004 * (i % 4), longtitude: -100.0 + 0.0004 * Math.floor(i / 4) });
+  const r = L.bestStopSet(start, near.concat(block), 'DRIVE', 60, 15);
+  assert.ok(r.label.indexOf('Best block') === 0, r.label);
+  assert.ok(r.stops.length >= 10);
+  const only = L.bestStopSet(start, near, 'DRIVE', 60, 15);
+  assert.strictEqual(only.label, 'Nearest');
+  console.log('bestStopSet ok');
+})();

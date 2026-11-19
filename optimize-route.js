@@ -12,7 +12,7 @@ const ROUTE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_FIT_ITERATIONS = 3;
 
 // User-adjustable settings (persisted)
-const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, defaultEnd: null, travelPref: 'DRIVE' };
+const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, defaultEnd: null, travelPref: 'DRIVE', stopChoice: 'nearest' };
 try {
   Object.assign(opts, JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'));
 } catch (e) {}
@@ -240,7 +240,16 @@ async function runOptimization(map, start, bounds, source) {
     }))
     .map(loc => { loc.rank = loc._auto ? loc.dist * 3 + 0.3 : loc.dist; return loc; })
     .sort((a, b) => a.rank - b.rank);
-  candidates = dedupeByLatLng(candidates).slice(0, MAX_STOPS);
+  candidates = dedupeByLatLng(candidates);
+  if (opts.stopChoice === 'best' && candidates.length > 2) {
+    const mode0 = pickTravelMode(candidates.slice(0, MAX_STOPS), opts.travelPref);
+    const best = bestStopSet(start, candidates.filter((c) => !c._auto || candidates.length < MAX_STOPS * 2), mode0, opts.targetMins, MAX_STOPS);
+    if (best && best.stops.length >= 2) {
+      candidates = best.stops.slice().sort((a, b) => a.dist - b.dist);
+      if (best.label !== 'Nearest') showToast(best.label + ' (~' + best.mins + ' min)');
+    }
+  }
+  candidates = candidates.slice(0, MAX_STOPS);
 
   if (candidates.length < 2) {
     showToast('Not enough eligible stops in the current filtered view.', { type: 'error' });
@@ -676,6 +685,7 @@ function refreshSettingsUi() {
       <label>Target time ${sel('opt-target', opts.targetMins, [[30, '30 min'], [45, '45 min'], [60, '60 min'], [0, 'No limit']])}</label>
       <label>Skip visited within ${sel('opt-days', opts.recentDays, [[30, '30 days'], [90, '90 days'], [180, '180 days']])}</label>
       <label class="chk"><input type="checkbox" id="opt-recent"${opts.includeRecent ? ' checked' : ''}> Include recently visited</label>
+      <label>Stop choice ${sel('opt-choice', opts.stopChoice, [['nearest', 'Nearest'], ['best', 'Most visits per hour']])}</label>
       <label>Travel mode ${sel('opt-mode', opts.travelPref, [['DRIVE', 'Drive'], ['WALK', 'Walk'], ['auto', 'Auto']])}</label>
       <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
       <label>Start ${placeSel('opt-start', opts.customStart && opts.customStart.placeId, 'My location', opts.customStart && !opts.customStart.placeId ? opts.customStart.name : '')}</label>
@@ -696,6 +706,7 @@ function refreshSettingsUi() {
 
   document.getElementById('opt-target').addEventListener('change', (e) => { opts.targetMins = parseInt(e.target.value, 10); saveOpts(); });
   document.getElementById('opt-days').addEventListener('change', (e) => { opts.recentDays = parseInt(e.target.value, 10); saveOpts(); });
+  document.getElementById('opt-choice').addEventListener('change', (e) => { opts.stopChoice = e.target.value; saveOpts(); });
   document.getElementById('opt-mode').addEventListener('change', (e) => { opts.travelPref = e.target.value; saveOpts(); });
   document.getElementById('opt-recent').addEventListener('change', (e) => { opts.includeRecent = e.target.checked; saveOpts(); });
   document.getElementById('opt-nav').addEventListener('change', (e) => {

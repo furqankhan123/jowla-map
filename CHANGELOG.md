@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.23.0]
+- 7.9: Stop choice setting (Nearest / Most visits per hour)
+
 ## [0.22.2]
 - 7.8: GPS heading on origin and sideOfRoad on stops for driving (falls back to a plain request on 400)
 
