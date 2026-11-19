@@ -238,7 +238,7 @@ Followed the runbook (now deleted): a self-contained runbook for a fresh session
 ### Residual risk outside git (D4 DECIDED 2026-11-18: accept, with mitigations)
 - The app must stay open access (no tokens, no sign-in for users), so the sheet rows are readable by anyone who can load the app or read `config.js`. A referrer restriction only stops browsers. Authentication (private sheet + Apps Script relay + token) was rejected by the owner for that reason.
 - **Mitigations to do (owner, Google Cloud console):** (1) use two separate API keys: the Maps/Routes/Places key for `apiKey` and a second key restricted to the Sheets API only for `sheetsKey` (today both fields hold the same key); (2) HTTP-referrer restrict both to `https://furqankhan123.github.io/jowla-map/*`; (3) set a low per-day quota on the Sheets API and a budget alert; (4) share the sheet "Anyone with the link: Viewer", never Editor; (5) rotate both keys now, because the old keys were public in the old repo history (the history is gone, but treat the keys as seen).
-- **Mitigation in code (optional, not started):** fetch only the columns the app uses instead of `A2:V` (see `onData` in `map.js`), so unused columns are not exposed.
+- **Mitigation in code: DONE 0.24.9.** The app fetches only the columns it uses (`sheetRanges` in `config.js`, via `values:batchGet`, rebuilt by `mergeColumnRanges` in `logic.js`), so the other columns are never requested through the app. Anyone with the key can still request them directly.
 - Do not test the exposure by sending spoofed requests.
 
 ## Round 8: owner screenshots + improvement review (collected 2026-11-18 at 0.24.6)
