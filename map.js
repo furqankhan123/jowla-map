@@ -7,7 +7,8 @@ var frisco = {lat: 33.0597, lng: -96.7512};
 /** Cached lowercase/parsed fields so filter passes do no string/date work per row. */
 function setVisitMs(loc) {
   var t = loc.visitdate ? new Date(loc.visitdate).getTime() : NaN;
-  loc._auto = !!(window.isAutoVisit && window.isAutoVisit(loc));
+  // A visit logged on this device (ledger) is real even if the sheet row still carries the auto tag.
+  loc._auto = !loc._localVisit && !!(window.isAutoVisit && window.isAutoVisit(loc));
   loc._visitMs = (isNaN(t) || loc._auto) ? null : t;
 }
 function prepRow(loc) {
@@ -85,6 +86,7 @@ function mergeLedger(loc, ledger) {
   var ms = Date.parse(iso), sheetMs = Date.parse(loc.visitdate);
   if (isNaN(ms) || Date.now() - ms > 30 * 864e5 || (!isNaN(sheetMs) && sheetMs >= ms - 864e5)) { delete ledger[k]; return; }
   loc.visitdate = new Date(ms).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  loc._localVisit = true;
 }
 window.ledgerRecord = function (stop, on) {
   if (!stop || stop.rowid == null) return;
@@ -93,10 +95,11 @@ window.ledgerRecord = function (stop, on) {
   if (on) {
     l[k] = new Date().toISOString();
     if (loc && loc._prevVisit === undefined) loc._prevVisit = loc.visitdate || '';
-    if (loc) loc.visitdate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    if (loc) { loc.visitdate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); loc._localVisit = true; }
   } else {
     delete l[k];
     if (loc && loc._prevVisit !== undefined) { loc.visitdate = loc._prevVisit; loc._prevVisit = undefined; }
+    if (loc) loc._localVisit = false;
   }
   if (loc) setVisitMs(loc);
   saveLedger(l);
@@ -391,8 +394,9 @@ function createMarker(map, location) {
       '<button type="button" class="iw-close" aria-label="Close" onclick="window.__iw && window.__iw.close()">&times;</button>' +
       (location.name ? '<div class="iw-name">' + e(window.titleCase ? titleCase(location.name) : location.name) + '</div>' + (location._auto ? '<div class="iw-tag" style="color:#5f6368;font-size:12px">maybe rental</div>' : '') : '') +
       (location.address ? '<p>' + e(location.address) + '</p>' : '') +
-      (location.comments ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +
-      (location.visitdate ? '<p><strong>Last visit:</strong> ' + e(location.visitdate) + '</p>' : '') +
+      // "maybe rental" rows: the comment is only the automation tag and the date is when the script ran, not a visit.
+      (location.comments && !location._auto ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +
+      (location.visitdate && !location._auto ? '<p><strong>Last visit:</strong> ' + e(location.visitdate) + '</p>' : '') +
       '<a class="iw-btn" href="' + e(nb.primary.url) + '" target="_blank" rel="noopener">Navigate (' + nb.primary.label + ')</a>' +
       '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__popupLoc);}">Visit Details</a>' +
       '</div>');

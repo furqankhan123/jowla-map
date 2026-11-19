@@ -126,7 +126,8 @@ details.route-settings-box { margin-top: 12px; }
         max-height: 85vh; border-radius: 8px; padding-bottom: 0;
     }
     #route-panel.half, #route-panel.full, #route-panel.peek { height: auto; }
-    #route-panel:not(.half):not(.full) #route-panel-body { display: block; }
+    /* :not(.minimized) matters: this selector outranks the .minimized rule below, so without it Minimize hid nothing */
+    #route-panel:not(.half):not(.full):not(.minimized) #route-panel-body { display: block; }
     #route-panel.minimized { max-height: none; }
     #route-panel.minimized #route-panel-body, #route-panel.minimized #route-primary { display: none; }
     #route-handle { display: none; }
