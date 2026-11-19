@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.11]
+- Filters page fetches only the city column (fix 0.24.9 regression)
+
 ## [0.24.10]
 - Rename newindex.html to map.html
 

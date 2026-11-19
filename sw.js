@@ -1,5 +1,5 @@
 /* Jowla Map service worker. Bump CACHE_VERSION to invalidate caches. */
-const CACHE_VERSION = 'v0.24.10';
+const CACHE_VERSION = 'v0.24.11';
 const SHELL_CACHE = 'jowla-shell-' + CACHE_VERSION;
 const DATA_CACHE = 'jowla-data'; // unversioned: offline data survives deploys
 const SHELL = [
