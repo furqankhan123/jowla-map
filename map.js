@@ -358,6 +358,7 @@ function setLocations(map, locs, keepView) {
     bounds.extend({ lat: loc.latitude, lng: loc.longtitude });
   }
   markers = list;
+  if (window.pinsHiddenForRoute && window.pinsHiddenForRoute()) { markers = list; return; } // route shown: keep other pins off
   try { ensureClusterer(map).addMarkers(list); }
   catch (e) { console.warn('Cluster render deferred (map projection not ready):', e && e.message); } // redraws on the next idle
   // Only fit when the set is small: a few mis-geocoded rows (other states/countries) would zoom
@@ -388,7 +389,7 @@ function createMarker(map, location) {
     var detailsUrl = visitDetailsUrl(location);
     sharedIw.setContent('<div class="iw">' +
       '<button type="button" class="iw-close" aria-label="Close" onclick="window.__iw && window.__iw.close()">&times;</button>' +
-      (location.name ? '<div class="iw-name">' + e(location.name) + '</div>' : '') +
+      (location.name ? '<div class="iw-name">' + e(window.titleCase ? titleCase(location.name) : location.name) + '</div>' + (location._auto ? '<div class="iw-tag" style="color:#5f6368;font-size:12px">maybe rental</div>' : '') : '') +
       (location.address ? '<p>' + e(location.address) + '</p>' : '') +
       (location.comments ? '<p><strong>Comments:</strong> ' + e(location.comments) + '</p>' : '') +
       (location.visitdate ? '<p><strong>Last visit:</strong> ' + e(location.visitdate) + '</p>' : '') +

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.5]
+- Respect hide-other-pins on data refresh/filter; title-case + maybe-rental tag in popup
+
 ## [0.24.4]
 - Guard clusterer render before the map projection is ready (cold-load 'Could not load stops')
 

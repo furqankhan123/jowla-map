@@ -88,6 +88,7 @@ function drawNumberedMarkers(map, ordered) {
 }
 
 let hideOtherPins = true;
+window.pinsHiddenForRoute = () => !!(currentRoute && hideOtherPins);
 /** While a route is shown the other pins (and cluster bubbles) are removed so route numbers stay readable. */
 function applyPinVisibility() {
   if (!mapRef || !window.setLocations) return;
@@ -495,6 +496,7 @@ window.markRouteStopDone = function (loc) {
   if (s) markStopDone(s);
 };
 /** Refresh done-state visuals: rows, markers and the primary nav button. */
+window.titleCase = titleCase;
 function titleCase(n) {
   if (!n) return '';
   return n === n.toUpperCase() || n === n.toLowerCase()
