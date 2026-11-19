@@ -186,6 +186,7 @@ Round 7 (0.22.0-0.24.6): "[auto] maybe rental" rows count as never visited and r
 0.24.7 verified live (1280x800, native clicks): Minimize hides list + primary row and shows "+", Expand restores; maybe-rental popup shows name, "maybe rental" tag, address, buttons only; a normal pin still shows Comments + Last visit; `ledgerRecord` on an auto row clears `_auto` and sets `_visitMs`, undo restores (local only, nothing sent).
 
 **Verified facts (don't re-derive):**
+- History rewritten on 2026-11-18 and the repo re-created as `jowla-map` (Pages: https://furqankhan123.github.io/jowla-map/). All SHAs before it are gone (404). Re-clone, never pull or push, from any older clone. `tests/pii.test.js` guards against real data in tracked files. Open: sheet exposure via the public API key (D4, see Round 9 residual risk).
 - Desktop route-card CSS: `#route-panel:not(.half):not(.full) #route-panel-body` (2 ids + 2 classes) outranks `#route-panel.minimized ...` (2 ids + 1 class); any new "always show" rule must also carry `:not(.minimized)`.
 - Google segment URLs: explicit `origin` (previous destination) + raw `lat,lng` waypoints joined by `|` works; encoded commas made the Google Maps app load forever.
 - Apple Maps: a fixed `source=` makes Apple show only **Steps**; omitting it (start = Current Location) shows **Go** (CONFIRMED on iPhone). Apple's practical cap is 15 points per link.
@@ -205,7 +206,6 @@ Round 7 (0.22.0-0.24.6): "[auto] maybe rental" rows count as never visited and r
 - In the bash tool, avoid backticks/`$(` inside commit messages and `sed` strings; put multi-line edits in a Python script file in the scratchpad (there were repeated quoting failures with inline heredocs).
 
 **Open items (pick up here):**
-0. **PII purge of the repo, its history and GitHub (Round 9, do first).** Old commits that held real data are still served by GitHub, see Round 9 and run [PII-PURGE-PLAN.md](PII-PURGE-PLAN.md).
 1. **Phone checks still pending** (cannot be done in Playwright): real GPS start + heading hint on a moving phone, Apple Maps "Go" vs "Steps" with the new routes, touch layout and chip sizes, quick-log chips on a real phone, Apple/Google segment navigation, haptics-free tap targets (done toggle is 44px).
 2. **Evaluate 7.8 / 7.9 / 7.10 with real data:** count back-and-forth segments and minutes with and without `sideOfRoad`+heading on ~5 saved areas (use `countTurns(decodePolyline(route.encoded))` from the console); compare "Most visits per hour" vs "Nearest" in sparse areas (in a dense area both gave the same 15-stop set) and flip the default only if it helps; find a route that really has 2+ U-turns to see the street-sweep fallback win (it was only forced with a faked count, and the 0.24.0 test route had 0 U-turns and ~21 left turns, which suggests the left-turn weight may be too noisy: tune `0.3 min per left turn` or drop it).
 3. **Cluster "Optimize" start:** from the cluster sheet the route starts at GPS / map center, so from far away only 2 of 22 stops fit the 60 min target. Consider starting the tour at the cluster (or telling the user the start is far away).
@@ -217,7 +217,7 @@ Round 7 (0.22.0-0.24.6): "[auto] maybe rental" rows count as never visited and r
 
 Round 6 and Round 7 below are the ordered plans that were worked through; all items are DONE except 6.23 (deferred) and the evaluation work listed above.
 
-## Round 9: PII purge (repo, commit history, branches, GitHub)  [IN PROGRESS 2026-11-18: rewrite and guard done locally, publish (step 6) awaits the owner]
+## Round 9: PII purge (repo, commit history, branches, GitHub)  [DONE 2026-11-18, option 6A: repo deleted and re-created as jowla-map]
 
 **Goal:** no real names, addresses, coordinates or sheet row ids anywhere in the repo, in any commit (content or message) reachable from any ref, or on GitHub; only `main` remains. Never write the PII values themselves into this file, a commit or an issue; refer to them by file/commit.
 
@@ -233,7 +233,7 @@ Decisions: D1 delete and re-create the repo, D2 replace author email with the Gi
 - **Local only, not in git:** `.playwright-mcp/` (259 files, real names) and the scratchpad; delete after sessions.
 
 ### Steps
-Follow [PII-PURGE-PLAN.md](PII-PURGE-PLAN.md): a self-contained runbook for a fresh session (owner decisions D1-D4, backup, re-scan script, git-filter-repo with value-free regexes, branch/tag deletion, re-create the repo or force-push + GitHub Support, local cleanup, verification, a PII guard test). Summary: back up, rewrite, delete `claude/*` branches (and the tags), publish clean `main`, make the old SHAs 404, re-clone everywhere.
+Followed the runbook (now deleted): a self-contained runbook for a fresh session (owner decisions D1-D4, backup, re-scan script, git-filter-repo with value-free regexes, branch/tag deletion, re-create the repo or force-push + GitHub Support, local cleanup, verification, a PII guard test). Summary: back up, rewrite, delete `claude/*` branches (and the tags), publish clean `main`, make the old SHAs 404, re-clone everywhere.
 
 ### Residual risk outside git (owner decision)
 - `config.js` must ship the Sheets id and API key to the browser, so they stay public on Pages whatever the history says. An HTTP-referrer restriction only stops browsers; a script can send any `Referer`, so if the sheet is readable with that key, the full list of names and addresses is readable by anyone with the repo. Options: restrict the sheet's sharing and serve data through the Apps Script relay with a token, or accept the risk knowingly.
