@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.0]
+- 7.10: experimental Fewer U-turns setting (turn detector + street sweep)
+
 ## [0.23.4]
 - Use SuperClusterViewportAlgorithm so only viewport markers are attached
 

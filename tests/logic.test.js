@@ -113,3 +113,25 @@ console.log('isAutoVisit ok');
   assert.strictEqual(only.label, 'Nearest');
   console.log('bestStopSet ok');
 })();
+
+// --- turn detector / street sweep (synthetic geometry)
+(function () {
+  const P = (lat, lng) => ({ lat, lng });
+  // Known encoded polyline from Google docs: (38.5,-120.2),(40.7,-120.95),(43.252,-126.453)
+  const dec = L.decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@');
+  assert.strictEqual(dec.length, 3);
+  assert.ok(Math.abs(dec[0].lat - 38.5) < 1e-5 && Math.abs(dec[2].lng + 126.453) < 1e-5);
+  // straight north then reverse = 1 U-turn
+  assert.deepStrictEqual(L.countTurns([P(40, -100), P(40.001, -100), P(40, -100)]), { uturns: 1, lefts: 0 });
+  // north then west = left turn; north then east = right turn (not counted)
+  assert.deepStrictEqual(L.countTurns([P(40, -100), P(40.001, -100), P(40.001, -100.001)]), { uturns: 0, lefts: 1 });
+  assert.deepStrictEqual(L.countTurns([P(40, -100), P(40.001, -100), P(40.001, -99.999)]), { uturns: 0, lefts: 0 });
+  assert.strictEqual(L.streetKey('123 Main St, Testville'), 'main st');
+  assert.strictEqual(L.streetKey('45B Oak Ave Apt 3, Town'), 'oak ave');
+  // sweep: two streets, stops interleaved in the input -> grouped per street, monotone along each
+  const mk = (n, a, lat, lng) => ({ name: n, address: a, latitude: lat, longtitude: lng });
+  const stops = [mk('a1', '1 Oak Ave, T', 40.000, -100), mk('b1', '2 Elm St, T', 40.000, -100.01), mk('a3', '5 Oak Ave, T', 40.002, -100), mk('b2', '4 Elm St, T', 40.002, -100.01), mk('a2', '3 Oak Ave, T', 40.001, -100), mk('b3', '6 Elm St, T', 40.001, -100.01)];
+  const sw = L.streetSweepOrder({ lat: 39.999, lng: -100 }, stops).map((s) => s.name);
+  assert.deepStrictEqual(sw, ['a1', 'a2', 'a3', 'b2', 'b3', 'b1']);
+  console.log('turns/sweep ok');
+})();

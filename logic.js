@@ -195,7 +195,82 @@
     return best;
   }
 
+  /** Decode a Google encoded polyline (precision 5) -> [{lat,lng}]. */
+  function decodePolyline(str) {
+    var pts = [], i = 0, lat = 0, lng = 0;
+    while (i < str.length) {
+      for (var k = 0; k < 2; k++) {
+        var shift = 0, result = 0, b;
+        do { b = str.charCodeAt(i++) - 63; result |= (b & 31) << shift; shift += 5; } while (b >= 32);
+        var d = (result & 1) ? ~(result >> 1) : (result >> 1);
+        if (k === 0) lat += d; else lng += d;
+      }
+      pts.push({ lat: lat / 1e5, lng: lng / 1e5 });
+    }
+    return pts;
+  }
+
+  function bearing(a, b) {
+    var r = Math.PI / 180, dl = (b.lng - a.lng) * r;
+    var y = Math.sin(dl) * Math.cos(b.lat * r);
+    var x = Math.cos(a.lat * r) * Math.sin(b.lat * r) - Math.sin(a.lat * r) * Math.cos(b.lat * r) * Math.cos(dl);
+    return (Math.atan2(y, x) / r + 360) % 360;
+  }
+
+  /** Count U-turns (reversal > 150 deg) and left turns (-60..-120 deg, right-hand traffic) on a path.
+   *  Segments shorter than ~8 m are merged into the next vertex so GPS jitter is ignored. */
+  function countTurns(pts) {
+    var res = { uturns: 0, lefts: 0 };
+    if (!pts || pts.length < 3) return res;
+    var kept = [pts[0]];
+    for (var i = 1; i < pts.length; i++) {
+      if (haversine(kept[kept.length - 1], pts[i]) * 1000 >= 8 || i === pts.length - 1) kept.push(pts[i]);
+    }
+    for (var j = 1; j < kept.length - 1; j++) {
+      var d = bearing(kept[j], kept[j + 1]) - bearing(kept[j - 1], kept[j]);
+      d = ((d + 540) % 360) - 180; // -180..180, negative = left
+      if (Math.abs(d) > 150) res.uturns++;
+      else if (d <= -60 && d >= -120) res.lefts++;
+    }
+    return res;
+  }
+
+  /** "123 Main St, Town" -> "main st" (street key for grouping), '' when unparseable. */
+  function streetKey(address) {
+    var first = String(address || '').split(',')[0].toLowerCase().replace(/^\s*\d+[a-z]?\s+/, '').replace(/\s+(apt|unit|ste|suite|#).*$/, '').trim();
+    return first;
+  }
+
+  /** "Street sweep": visit each street once in one direction, chain streets by nearest end. */
+  function streetSweepOrder(start, stops) {
+    var groups = {};
+    stops.forEach(function (s, i) { var k = streetKey(s.address) || ('~' + i); (groups[k] = groups[k] || []).push(s); });
+    var list = Object.keys(groups).map(function (k) {
+      var g = groups[k];
+      var latSpan = Math.max.apply(null, g.map(function (s) { return s.latitude; })) - Math.min.apply(null, g.map(function (s) { return s.latitude; }));
+      var lngSpan = Math.max.apply(null, g.map(function (s) { return s.longtitude; })) - Math.min.apply(null, g.map(function (s) { return s.longtitude; }));
+      var key = latSpan >= lngSpan ? 'latitude' : 'longtitude';
+      return g.slice().sort(function (a, b) { return a[key] - b[key]; });
+    });
+    var out = [], cur = { lat: start.lat, lng: start.lng };
+    var pt = function (s) { return { lat: s.latitude, lng: s.longtitude }; };
+    while (list.length) {
+      var best = 0, bestRev = false, bd = Infinity;
+      list.forEach(function (g, i) {
+        var d1 = haversine(cur, pt(g[0])), d2 = haversine(cur, pt(g[g.length - 1]));
+        if (d1 < bd) { bd = d1; best = i; bestRev = false; }
+        if (d2 < bd) { bd = d2; best = i; bestRev = true; }
+      });
+      var g = list.splice(best, 1)[0];
+      if (bestRev) g.reverse();
+      out = out.concat(g);
+      cur = pt(g[g.length - 1]);
+    }
+    return out;
+  }
+
   var api = {
+    decodePolyline: decodePolyline, countTurns: countTurns, streetKey: streetKey, streetSweepOrder: streetSweepOrder,
     bestStopSet: bestStopSet,
     isAutoVisit: isAutoVisit, parseCityParam: parseCityParam, matchesFilters: matchesFilters, filtersToQuery: filtersToQuery,
     computeEtas: computeEtas, estimateTourMins: estimateTourMins, haversine: haversine, findClusters: findClusters, pickTravelMode: pickTravelMode

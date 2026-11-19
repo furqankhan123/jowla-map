@@ -12,7 +12,7 @@ const ROUTE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_FIT_ITERATIONS = 3;
 
 // User-adjustable settings (persisted)
-const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, defaultEnd: null, travelPref: 'DRIVE', stopChoice: 'nearest' };
+const opts = { recentDays: 180, includeRecent: false, targetMins: 60, customStart: null, defaultEnd: null, travelPref: 'DRIVE', stopChoice: 'nearest', fewerUturns: false };
 try {
   Object.assign(opts, JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'));
 } catch (e) {}
@@ -277,6 +277,22 @@ async function runOptimization(map, start, bounds, source) {
     candidates = candidates.slice(0, keep); // already sorted nearest-first
   }
 
+  if (opts.fewerUturns && result.travelMode !== 'WALK' && result.encoded) {
+    // Experimental: if Google's order has 2+ U-turns, also try a street sweep and keep the cheaper one.
+    const cost = (r) => r.totalMins + r.turns.uturns + 0.3 * r.turns.lefts;
+    result.turns = countTurns(decodePolyline(result.encoded));
+    if (result.turns.uturns >= 2) {
+      const sweep = streetSweepOrder(start, result.ordered);
+      const alt = await requestRoute(start, sweep, endFromOpts(), true);
+      if (alt && alt.encoded) {
+        alt.turns = countTurns(decodePolyline(alt.encoded));
+        if (cost(alt) < cost(result)) {
+          showToast('Street-sweep order: ' + alt.turns.uturns + ' U-turns vs ' + result.turns.uturns);
+          result = alt;
+        }
+      }
+    }
+  }
   if (opts.targetMins && result.totalMins > opts.targetMins * 1.1) {
     showToast('~' + result.totalMins + ' min (over the ' + opts.targetMins + ' min target)');
   }
@@ -299,7 +315,7 @@ async function runOptimization(map, start, bounds, source) {
   renderRoute(map, route, true);
 }
 
-async function requestRoute(start, candidates, endPoint) {
+async function requestRoute(start, candidates, endPoint, fixedOrder) {
   const travelMode = pickTravelMode(candidates, opts.travelPref);
   // The end is always a location (custom end, else back to the start), never a stop.
   // The end is the start (round trip) unless a stop was chosen as the final stop.
@@ -313,7 +329,7 @@ async function requestRoute(start, candidates, endPoint) {
     destination: { location: { latLng: { latitude: endPt.lat, longitude: endPt.lng } } },
     intermediates: intermediates.map(c => Object.assign({ location: { latLng: { latitude: c.latitude, longitude: c.longtitude } } }, hints ? { sideOfRoad: true } : {})),
     travelMode: travelMode,
-    optimizeWaypointOrder: true
+    optimizeWaypointOrder: !fixedOrder
   });
   const post = (hints) => fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
@@ -685,6 +701,7 @@ function refreshSettingsUi() {
       <label>Target time ${sel('opt-target', opts.targetMins, [[30, '30 min'], [45, '45 min'], [60, '60 min'], [0, 'No limit']])}</label>
       <label>Skip visited within ${sel('opt-days', opts.recentDays, [[30, '30 days'], [90, '90 days'], [180, '180 days']])}</label>
       <label class="chk"><input type="checkbox" id="opt-recent"${opts.includeRecent ? ' checked' : ''}> Include recently visited</label>
+      <label>Fewer U-turns (uses one more request) ${sel('opt-uturn', opts.fewerUturns ? '1' : '0', [['0', 'Off'], ['1', 'On']])}</label>
       <label>Stop choice ${sel('opt-choice', opts.stopChoice, [['nearest', 'Nearest'], ['best', 'Most visits per hour']])}</label>
       <label>Travel mode ${sel('opt-mode', opts.travelPref, [['DRIVE', 'Drive'], ['WALK', 'Walk'], ['auto', 'Auto']])}</label>
       <label>Preferred maps app ${sel('opt-nav', navPref(), [['google', 'Google Maps'], ['apple', 'Apple Maps']])}</label>
@@ -706,6 +723,7 @@ function refreshSettingsUi() {
 
   document.getElementById('opt-target').addEventListener('change', (e) => { opts.targetMins = parseInt(e.target.value, 10); saveOpts(); });
   document.getElementById('opt-days').addEventListener('change', (e) => { opts.recentDays = parseInt(e.target.value, 10); saveOpts(); });
+  document.getElementById('opt-uturn').addEventListener('change', (e) => { opts.fewerUturns = e.target.value === '1'; saveOpts(); });
   document.getElementById('opt-choice').addEventListener('change', (e) => { opts.stopChoice = e.target.value; saveOpts(); });
   document.getElementById('opt-mode').addEventListener('change', (e) => { opts.travelPref = e.target.value; saveOpts(); });
   document.getElementById('opt-recent').addEventListener('change', (e) => { opts.includeRecent = e.target.checked; saveOpts(); });
