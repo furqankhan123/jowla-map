@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.22.1]
+- Shorter summary count (14/15 stops)
+
 ## [0.22.0]
 - Round 7.1-7.7, 7.11: auto-rental rows ranked last, Next line above Go/Log, shorter summary, route pins above clusters, bigger done toggle, start source, title case names
 

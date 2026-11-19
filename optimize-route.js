@@ -848,7 +848,7 @@ function routeSummaryText(route) {
   const left = route.stops.filter((x) => !x.done).length;
   const { endEta } = computeEtas(route.stops, route.legSecs, Date.now());
   const end = route.end || (route.start ? { same: true } : null);
-  const count = left < route.stops.length ? `${left} of ${route.stops.length}` : `${route.stops.length}`;
+  const count = left < route.stops.length ? `${left}/${route.stops.length}` : `${route.stops.length}`;
   return summaryLine(count, route.totalMins, route.travelMode, end, end ? endEta : null);
 }
 function updateEtas() {
