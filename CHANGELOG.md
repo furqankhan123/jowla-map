@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.8]
+- PII guard in tests
+
 ## [0.24.7]
 - Desktop Minimize really collapses the route card; maybe-rental popups hide the automation comment and date; a locally logged maybe-rental stop counts as visited
 

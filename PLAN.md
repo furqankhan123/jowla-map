@@ -217,9 +217,12 @@ Round 7 (0.22.0-0.24.6): "[auto] maybe rental" rows count as never visited and r
 
 Round 6 and Round 7 below are the ordered plans that were worked through; all items are DONE except 6.23 (deferred) and the evaluation work listed above.
 
-## Round 9: PII purge (repo, commit history, branches, GitHub)  [PLANNED 2026-11-18, not started]
+## Round 9: PII purge (repo, commit history, branches, GitHub)  [IN PROGRESS 2026-11-18: rewrite and guard done locally, publish (step 6) awaits the owner]
 
 **Goal:** no real names, addresses, coordinates or sheet row ids anywhere in the repo, in any commit (content or message) reachable from any ref, or on GitHub; only `main` remains. Never write the PII values themselves into this file, a commit or an issue; refer to them by file/commit.
+
+### Status (2026-11-18)
+Decisions: D1 delete and re-create the repo, D2 replace author email with the GitHub noreply address (also dropped Claude co-author/session trailers and mapped the 19 Claude-authored commits to the owner), D3 delete tags, D4 sheet exposure stays a separate item. Done: mirror backup, re-scan, history rewritten in a clean clone (rowid / name / organisation text replaced, places.md removed, only main, no tags), tests/pii.test.js added (0.24.8). Left: owner deletes and re-creates the GitHub repo, push, re-enable Pages, verify old SHAs 404, local cleanup (see the runbook status block).
 
 ### Audit (2026-11-18, 124 commits, all refs)
 - **Scans run:** every added/removed line of `git log --all -p` plus commit messages against address / TX zip / 5-decimal coordinate / phone / email patterns, and against ~590 name tokens taken from the local Playwright snapshots (real data, gitignored). Only a fake example address was found by the patterns.

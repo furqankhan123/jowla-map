@@ -9,6 +9,9 @@ Self-contained plan for a fresh session. Goal: no real names, addresses, coordin
 - Shell is Git Bash on Windows. Avoid backticks and `$(` inside commit messages and `sed` strings; put multi-line edits in a Python script file (inline heredocs have failed repeatedly here).
 - Repo: `https://github.com/furqankhan123/jowla-map-optimize` (public, Pages from `main`, CI in `.github/workflows/ci.yml`). Python 3.11 and pip are installed; `git-filter-repo` is not.
 
+## STATUS (2026-11-18)
+Decisions made: D1 re-create repo, D2 yes (noreply address; also strip Claude trailers/authorship), D3 delete tags, D4 separate item. Done: steps 2-5 and 9 in the sibling folder jowla-clean (backup mirror in the sibling folder jowla-backup.git; old SHA lists in the session scratchpad). Scan after rewrite: PII categories 0, places.md unreachable, tests pass. NEXT (needs owner): step 6A (owner deletes and re-creates the repo; then push from jowla-clean), step 7 (swap folders, delete .playwright-mcp), step 8 verify, step 10 (delete this file).
+
 ## 0. Decisions to collect from the owner first (ask in one AskUserQuestion)
 
 | # | Question | Recommended | Other option |
@@ -23,7 +26,7 @@ Self-contained plan for a fresh session. Goal: no real names, addresses, coordin
 - **PII in history (all in old versions of PLAN.md; HEAD is already clean since `ceed18a`):**
   - Sheet row ids written as `DFW rowid <number>`: 9 occurrences, 2 distinct ids (quick-log verification notes in the handoff).
   - A household first name used as the example in Round 7 item 7.2: `"Go: 1. <Name>"`, 3 occurrences.
-  - A real organisation name from the sheet in handoff item 4 (Title Case acronyms): `(seen on an organisation name ending in "USA")`, 2 occurrences.
+  - A real organisation name from the sheet in handoff item 4 (Title Case acronyms): `("<three words> Usa")`, 2 occurrences.
 - **`places.md`:** a Playwright snapshot with real data, committed by mistake and removed by an earlier rewrite. Gone from all branches, but its two commits are still in the local reflog (`git log --all --reflog --format=%H -- places.md`) and **GitHub still serves both at their commit URLs (HTTP 200 on 2026-11-18)**.
 - **Refs:** `main`; local + remote `claude/marker-clustering`; remote `claude/implement-plan-md-qjez3u`. Both branches are 0 commits ahead of `main` (fully merged). Tags `v0.5.0`, `v0.6.0` (merged). No stashes, no PRs, 0 forks.
 - **Author identity:** 105 commits use the owner's personal email (`git log --all --format=%ae | sort | uniq -c`).
