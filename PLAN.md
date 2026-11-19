@@ -5,7 +5,7 @@ Reduce the time spent clicking around the app: find a marker, open it in the nav
 Optimize generates an ordered route of nearby unvisited stops (~1 hour, walking in dense clusters), and Visit → Next collapses logging and advancing into one tap, all within the Google Maps free tier.
 
 ## Current baseline
-- Map lives at `https://dailyfikr.github.io/` (and variants such as `newindex.html`).
+- Map lives at `https://dailyfikr.github.io/` (and variants such as `map.html`).
 - Addresses are loaded from a Google Sheet and shown as markers.
 - Clicking a marker opens a single-destination Google Maps link.
 - Typical session: ~10 stops.
@@ -31,7 +31,7 @@ Optimize generates an ordered route of nearby unvisited stops (~1 hour, walking 
 Files changed / added:
 - `optimize-route.js` — new feature logic
 - `map.js` — hooks the control after map init
-- `newindex.html` — loads the new script
+- `map.html` — loads the new script
 - `map.css` — styles for the side panel
 
 ## Refinements (status)
@@ -89,11 +89,11 @@ Ongoing: restrict both API keys by HTTP referrer; fill README from PLAN.md.
 ### Step 3: In-map filter sheet
 **Goal:** change City/Status/Visited/Name without leaving the map (removes the slow round trip to index.html).
 
-- **UI:** a "Filters" FAB (above Optimize in `#fab-group` in [newindex.html](newindex.html)) opens a bottom sheet reusing the sheet CSS pattern from [map.css](map.css) (`#filter-panel` old rules get replaced). Fields mirror [index.html](index.html): City select (same option list; extract to one shared JS array `CITIES` in map.js and have index.html keep its static list or load it), Status, Visited, Name input; all 16px, 48px tall. Buttons: "Apply" (primary) and "Reset". Shows live count "N stops".
+- **UI:** a "Filters" FAB (above Optimize in `#fab-group` in [map.html](map.html)) opens a bottom sheet reusing the sheet CSS pattern from [map.css](map.css) (`#filter-panel` old rules get replaced). Fields mirror [index.html](index.html): City select (same option list; extract to one shared JS array `CITIES` in map.js and have index.html keep its static list or load it), Status, Visited, Name input; all 16px, 48px tall. Buttons: "Apply" (primary) and "Reset". Shows live count "N stops".
 - **Logic:** refactor `applyUrlFilters()` in [map.js](map.js) into `applyFilters(f)` taking `{city,status,name,visited}`; `applyUrlFilters` parses the URL then calls it. Apply → `applyFilters`, `history.replaceState` with the same query format `createDynamicURL` produces (`City==='X'`, `S=`, `F=`, `P=`) so links/bookmarks stay valid, and re-fit bounds (existing `setLocations`).
 - **Prefill:** sheet initial values come from the parsed URL params; also persist to `localStorage` key `jowla-filters` (same key index.html uses) so both pages agree.
 - **Interaction with route:** applying filters clears `routeMarkers`/polyline and hides the route panel (`clearRouteOverlays`, close sheet) since the route was built from the old set; toast "Filters applied".
-- **Files:** map.js, map.css, newindex.html, small touch in index.html (share storage key).
+- **Files:** map.js, map.css, map.html, small touch in index.html (share storage key).
 - **Verify:** apply each filter alone and combined; URL updates and reload reproduces the view; count matches marker count; Optimize afterwards uses only the filtered set; filter sheet and route sheet never overlap (opening one closes the other).
 
 ### Step 4: PWA install + offline shell
@@ -101,7 +101,7 @@ Ongoing: restrict both API keys by HTTP referrer; fill README from PLAN.md.
 
 - **Manifest:** `manifest.webmanifest` (name "Jowla Map", `display: standalone`, `start_url: index.html`, theme `#1a73e8`, icons 192/512 + maskable). Generate icons as PNGs into `icons/`. Link from both HTML pages plus `apple-touch-icon`.
 - **Service worker:** `sw.js` at repo root (GitHub Pages scope).
-  - Precache app shell: index.html, newindex.html, map.css, map.js, optimize-route.js, manifest, icons, jQuery (self-host a copy as `vendor/jquery-3.1.1.min.js` so it caches reliably).
+  - Precache app shell: index.html, map.html, map.css, map.js, optimize-route.js, manifest, icons, jQuery (self-host a copy as `vendor/jquery-3.1.1.min.js` so it caches reliably).
   - Strategy: shell = stale-while-revalidate; Google Sheets API response = network-first with cache fallback (cache key = request URL; the key is in the URL, fine); never cache Routes API POSTs, Maps JS, or map tiles.
   - Bump a `CACHE_VERSION` constant to invalidate; HTML references use `?v=` already, so also key the cache on that.
 - **Offline behavior:** if Sheets fetch fails and cache exists, load cached data and toast "Offline — showing saved data". The Maps JS API itself needs network, so full offline map is out of scope; when offline show a toast instead of a blank page, and still show the saved route list in the sheet (list + nav links work without the map). Implement by rendering the route panel from `localStorage` before Maps loads (small refactor: `showRoutePanel` doesn't need `google`, only `ensurePanel`).
@@ -152,7 +152,7 @@ Not built until routing supports mixed modes (currently one `travelMode` per rou
   3. Add a setting "Preferred maps app" (Google / Apple) in Route settings, stored in localStorage `jowla-nav-pref`, default Google. The preferred app is the primary button; the other is always shown as a secondary link.
   4. Popup: primary "Navigate" opens the preferred app; a second button "Open in Apple/Google Maps" opens the other one.
   5. Route sheet: show both Google and Apple buttons for everyone. When more than 15 stops, split Apple into 15-stop segments like `buildGoogleMapsSegments` ("Apple Maps – Segment N") instead of dropping it.
-- **Files:** map.js, optimize-route.js, map.css (secondary button style), settings markup in newindex.html.
+- **Files:** map.js, optimize-route.js, map.css (secondary button style), settings markup in map.html.
 - **Verify:** on iPhone, Android and desktop the popup, Next pill, row Go and sheet all show both apps; the preference flips which is primary; 16+ stops yields multiple Apple segments; no reference to `isIOS` remains.
 ### D. Settings controls should look like buttons  [DONE 0.11.1]
 - **Problem:** "Route settings" and "Sync sheet" in the route sheet are bare `<summary>` / text links (`optimize-route.js` ~line 517, sync settings bound by `bindSyncSettings`), so users don't realize they can be tapped.
@@ -173,7 +173,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 - **Verify:** same-start/end round trip adds the return time; different end changes the order and total; fit-to-time respects it; clearing the end returns to same-as-start; persisted route restores the end.
 ## Session handoff (state at v0.24.7 on `main`, live on GitHub Pages; read this first)
 
-**How to work:** work on `main` (or a branch fast-forwarded to it); GitHub Pages serves `main`: https://furqankhan123.github.io/ . Commit + push each non-trivial change. Release with `node tools/bump-version.js X.Y.Z "changelog line" ["plan row"]` (updates config.js version, every `?v=`, `CACHE_VERSION`, CHANGELOG, PLAN row). Run `node tests/run.js` (syntax check of every JS file plus all `tests/*.test.js`) before pushing; CI runs it too. Live site: https://furqankhan123.github.io/jowla-map/newindex.html (Pages takes ~1-2 min; `curl .../sw.js | grep CACHE_VERSION` shows what is deployed). After a deploy the service worker serves the old files, see testing tips.
+**How to work:** work on `main` (or a branch fast-forwarded to it); GitHub Pages serves `main`: https://furqankhan123.github.io/ . Commit + push each non-trivial change. Release with `node tools/bump-version.js X.Y.Z "changelog line" ["plan row"]` (updates config.js version, every `?v=`, `CACHE_VERSION`, CHANGELOG, PLAN row). Run `node tests/run.js` (syntax check of every JS file plus all `tests/*.test.js`) before pushing; CI runs it too. Live site: https://furqankhan123.github.io/jowla-map/map.html (Pages takes ~1-2 min; `curl .../sw.js | grep CACHE_VERSION` shows what is deployed). After a deploy the service worker serves the old files, see testing tips.
 
 **Privacy rules (the owner enforces these):** never put real addresses, names or coordinates in the repo, commit messages or PLAN. Playwright snapshots/screenshots contain real names: `.playwright-mcp/` is gitignored; if you pass a `filename` to `browser_snapshot` it must be under that folder (or the scratchpad), NEVER the repo root (a snapshot `places.md` was once committed by mistake and history had to be rewritten). Never run quick-log / "Log visit" in tests without the owner's say-so: it writes to the real sheet via the Visit Details form.
 
@@ -445,7 +445,7 @@ Order rule: bugs that lose or misrecord visits first, then performance at ~45k r
 - **Verify:** DevTools Offline + reload with a saved route: list, Go links, Log and done toggles work; going online draws the map overlays.
 
 ### 6.15 One config + one version string (handoff item 6)
-- **Problem:** the API key is duplicated in [map.js](map.js), [optimize-route.js](optimize-route.js) and [newindex.html](newindex.html); the sheet ID/range and the form URL/`ENTRY` ids are hard-coded; the version lives in `APP_VERSION`, nine `?v=` strings and `CACHE_VERSION`.
+- **Problem:** the API key is duplicated in [map.js](map.js), [optimize-route.js](optimize-route.js) and [map.html](map.html); the sheet ID/range and the form URL/`ENTRY` ids are hard-coded; the version lives in `APP_VERSION`, nine `?v=` strings and `CACHE_VERSION`.
 - **Fix:** move `apiKey`, `sheetId`, `sheetRange`, `formUrl`, `entry`, `mapId` and `version` into [config.js](config.js). Load the Maps script dynamically from config (no key in HTML). Add `tools/bump-version.js` (Node, no deps) that rewrites `config.js` version, every `?v=` in the HTML files and `CACHE_VERSION` in sw.js, and prepends a CHANGELOG heading. Update the release steps in the handoff and README.
 - **Verify:** `grep` finds the key and version in one place each (plus generated `?v=`); `node tools/bump-version.js 0.19.0` produces a clean diff.
 
@@ -516,7 +516,7 @@ Note: Places and Geocoding are confirmed enabled on the Maps key, so the address
 4. **Verify address end point** on the phone now that Places/Geocoding are enabled: autocomplete suggestions appear above the sheet (`.pac-container` z-index), choosing one re-optimizes, reset works.
 
 ### Round 5 (item 1 DONE 0.16.1 via Places API (New); item 2 done)
-1. **End point search fails.** Screenshot: typing in "Set a different end point" shows Google's dialog "This page can't load Google Maps correctly. Do you own this website?" (the Places Autocomplete request is rejected, so no suggestions). The map itself loads, so the key works for Maps JS but not for Places. Check in Google Cloud Console for the key used in `newindex.html`: (a) API restrictions include **Maps JavaScript API and Places API** (the "Places API" legacy service used by `google.maps.places.Autocomplete`; if only "Places API (New)" is enabled, the legacy widget fails); (b) HTTP referrer restrictions include `https://furqankhan123.github.io/*`; (c) billing is enabled on the project. Code side: stop relying on the widget alone: on error (`gm_authFailure` / no suggestions) fall back to the Geocoder "Set end" button, and show a toast "Address search unavailable"; consider switching to the Places (New) `PlaceAutocompleteElement` or the Geocoding API only. Also make the picker usable with the keyboard open (scroll the input into view, the dialog covered the field).
+1. **End point search fails.** Screenshot: typing in "Set a different end point" shows Google's dialog "This page can't load Google Maps correctly. Do you own this website?" (the Places Autocomplete request is rejected, so no suggestions). The map itself loads, so the key works for Maps JS but not for Places. Check in Google Cloud Console for the key used in `map.html`: (a) API restrictions include **Maps JavaScript API and Places API** (the "Places API" legacy service used by `google.maps.places.Autocomplete`; if only "Places API (New)" is enabled, the legacy widget fails); (b) HTTP referrer restrictions include `https://furqankhan123.github.io/*`; (c) billing is enabled on the project. Code side: stop relying on the widget alone: on error (`gm_authFailure` / no suggestions) fall back to the Geocoder "Set end" button, and show a toast "Address search unavailable"; consider switching to the Places (New) `PlaceAutocompleteElement` or the Geocoding API only. Also make the picker usable with the keyboard open (scroll the input into view, the dialog covered the field).
 2. **Privacy: keep personal addresses out of the repo.** The street address seen in the Apple Maps screenshot was written into `PLAN.md` by mistake. It was removed from the file and from git history (history rewritten and force-pushed to `main` and the working branch). Rule going forward: never put real addresses, names or coordinates from screenshots into the repo, docs or commit messages. Old commit SHAs may stay reachable on GitHub until GitHub garbage-collects; to purge them immediately, contact GitHub Support or delete and recreate the repository.
 
 ## Suggested workflow once live

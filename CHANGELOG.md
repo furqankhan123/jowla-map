@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.10]
+- Rename newindex.html to map.html
+
 ## [0.24.9]
 - Fetch only the sheet columns the app uses (batchGet)
 

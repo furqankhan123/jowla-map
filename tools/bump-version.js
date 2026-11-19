@@ -19,7 +19,7 @@ function edit(file, fn) {
 }
 edit('config.js', (s) => s.replace(/version: '[^']*'/, `version: '${ver}'`));
 edit('sw.js', (s) => s.replace(/CACHE_VERSION = '[^']*'/, `CACHE_VERSION = 'v${ver}'`));
-['index.html', 'newindex.html'].forEach((f) => edit(f, (s) => s.replace(/\?v=[0-9.]+/g, `?v=${ver}`)));
+['index.html', 'map.html'].forEach((f) => edit(f, (s) => s.replace(/\?v=[0-9.]+/g, `?v=${ver}`)));
 if (line) {
   edit('CHANGELOG.md', (s) => s.replace('# Changelog\n', `# Changelog\n\n## [${ver}]\n- ${line}\n`));
 }

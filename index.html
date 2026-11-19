@@ -99,7 +99,7 @@
 
 <div class="bar"><button onclick="RedirectURL()">Display Map</button></div>
 
-<script src="config.js?v=0.24.9"></script>
+<script src="config.js?v=0.24.10"></script>
 <script>
 /* Cities present in the data but missing from the static list are added once the sheet
    (served from the service worker data cache when offline) arrives. */
@@ -134,7 +134,7 @@
 </script>
 <script>
 function createDynamicURL() {
-  var URL = 'newindex.html';
+  var URL = 'map.html';
   var params = [];
   var City = document.getElementById('myCity').value;
   if (City !== 'All') {

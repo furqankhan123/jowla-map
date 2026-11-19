@@ -16,7 +16,7 @@ The loop this targets, and how each feature shortens it:
 | Next marker | Find it again | The primary button immediately shows the next stop |
 
 ## Features
-- Filters home page (`index.html`) and the map (`newindex.html`).
+- Filters home page (`index.html`) and the map (`map.html`).
 - Optimize (icon button) via the Routes API: walking in dense clusters, driving otherwise; Do-Not-Visit rows excluded; round trip back to the start by default, or finish at an address you type.
 - Numbered route markers, ETAs per stop, fit-to-time (30/45/60 min), in-map filters and cluster suggestions.
 - Visit → Next flow with Undo toast; done state persists across reloads.
@@ -31,14 +31,14 @@ The loop this targets, and how each feature shortens it:
 - Offline: the saved route list works without the map; the service worker keeps the last sheet data across updates and shows a "New version available" toast.
 
 ## A typical session
-1. Open `newindex.html`, tap **Optimize**.
+1. Open `map.html`, tap **Optimize**.
 2. Tap **Go: 1. Name** and drive/walk there.
 3. Tap **Log visit ✓**, fill the form, come back; the sheet shows **Go: 2. …**.
 4. Repeat. Undo from the toast if you logged the wrong stop.
 
 ## Files
 - `index.html`: filters home page
-- `newindex.html`: map page
+- `map.html`: map page
 - `map.js`: sheet loading, filters, markers, infowindow
 - `logic.js`: pure logic (filters, ETAs, tour estimate, travel mode, clusters, haversine), unit tested
 - `optimize-route.js`: Optimize, route panel, Log → Next, end point, settings
