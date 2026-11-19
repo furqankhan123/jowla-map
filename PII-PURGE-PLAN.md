@@ -160,3 +160,6 @@ Expected before the rewrite: `rowid`, `go_name`, `org_usa` > 0; `street_addr` 1 
 ## Rollback
 
 Until step 7.6, the mirror backup restores everything: `git clone /c/Users/Furqan/jowla-backup.git` (and for 6A, push it to a new repo). After the backup is deleted there is no way back, by design.
+
+## Update: new repo name
+The re-created repo is named `jowla-map` (not `jowla-map-optimize`). Old SHAs must 404 under the old name (deleted); Pages is now https://furqankhan123.github.io/jowla-map/.
