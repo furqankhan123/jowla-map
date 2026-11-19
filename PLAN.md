@@ -210,7 +210,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 Round 6 below is the ordered plan that was worked through; every item is DONE (6.10 live as 0.21.0) except 6.23 (deferred).
 
-## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; next: 7.8, 7.9, 7.12, then 7.10)
+## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; next: 7.9, 7.12, then 7.10)
 
 Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live site at 390x844 (load, tour, Optimize, sheet peek/half/full). Order rule as in Round 6: wrong-stop/visit-data issues first, then the main route sheet, then routing quality, then polish. Sizes: S < 1h, M a few hours, L a day+.
 
@@ -257,7 +257,7 @@ Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live sit
 ### 7.7 "starts at GPS" after map-center fallback  [DONE 0.22.0-0.22.1, live-checked in Playwright]
 - When geolocation fails, `optimizeCurrentView` falls back to the map center but the list still says "starts at GPS". Pass the start's source (`gps` / `center` / place name) into the route and show "starts at map center".
 
-### 7.8 Fewer U-turns: GPS heading + arrive on the house's side (cheap, no extra cost)
+### 7.8 Fewer U-turns: GPS heading + arrive on the house's side (cheap, no extra cost)  [DONE 0.22.2: sideOfRoad verified live (200); heading needs phone GPS; U-turn A/B comparison still to do]
 - **Context:** the Routes API has no "avoid U-turns" or "avoid left turns" option (route modifiers are only tolls, highways, ferries, indoor). Also, turn-by-turn comes from Google/Apple Maps each time Go is tapped; our route only decides the **order** of stops, and the nav app picks the turns between them. So the levers are: the order, the start direction, and the side of the street we arrive on.
 - **Fix in `requestRoute` (DRIVE only):** add `heading` to the origin's `location` from `pos.coords.heading` when the phone is moving (non-null, speed > 2 m/s), so the route does not start with a U-turn; set `sideOfRoad: true` on each intermediate so Google routes to arrive on the side of the road the house is on (avoids passing it and turning back). Check that both work with `optimizeWaypointOrder` (it rejects `via` waypoints; `sideOfRoad` and `heading` should be fine) and keep the field mask unchanged.
 - **Verify:** compare the polyline on 5 saved test areas with and without; count back-and-forth segments (7.10's detector) and total minutes; keep it only if U-turns drop without much added time.
