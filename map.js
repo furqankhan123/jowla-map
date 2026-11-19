@@ -359,7 +359,17 @@ function setLocations(map, locs, keepView) {
   ensureClusterer(map).addMarkers(list);
   // Only fit when the set is small: a few mis-geocoded rows (other states/countries) would zoom
   // an "All" view out to the whole world. Large sets keep the saved / default view.
-  if (!keepView && list.length > 1 && list.length < 2000) map.fitBounds(bounds);
+  if (!keepView && list.length > 1 && list.length < 2000) {
+    // Fit to the core of the set: a few mis-geocoded rows far away must not zoom out to the whole country.
+    var la = locs.filter(function (l) { return l.latitude && l.longtitude; }).map(function (l) { return [+l.latitude, +l.longtitude]; });
+    if (la.length > 20) {
+      var lats = la.map(function (p) { return p[0]; }).sort(function (a, b) { return a - b; });
+      var lngs = la.map(function (p) { return p[1]; }).sort(function (a, b) { return a - b; });
+      var lo = Math.floor(la.length * 0.03), hi = Math.ceil(la.length * 0.97) - 1;
+      bounds = new google.maps.LatLngBounds({ lat: lats[lo], lng: lngs[lo] }, { lat: lats[hi], lng: lngs[hi] });
+    }
+    map.fitBounds(bounds);
+  }
 }
 
 function createMarker(map, location) {

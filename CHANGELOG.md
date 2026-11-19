@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.2]
+- Truncate long end name in summary, fresh Next ETA, trimmed fit bounds for filtered views
+
 ## [0.24.1]
 - Hide other pins redraws immediately after a fresh route
 

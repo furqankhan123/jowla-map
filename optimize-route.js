@@ -524,7 +524,7 @@ function updateDoneUi() {
   const n = stops.indexOf(next) + 1;
   const vUrl = window.visitDetailsUrl ? visitDetailsUrl(next) : '';
   const nextEta = computeEtas(stops, currentRoute.legSecs, Date.now()).etas[n - 1];
-  el.innerHTML = `<div class="next-line">Next \u00b7 <b>${n}. ${escapeHtml(titleCase(next.name) || next.address || 'Stop')}</b>${nextEta ? ' \u00b7 ' + fmtTime(new Date(nextEta)) : ''}</div>` +
+  el.innerHTML = `<div class="next-line">Next \u00b7 <b>${n}. ${escapeHtml(titleCase(next.name) || next.address || 'Stop')}</b>${nextEta ? ' \u00b7 <span class="next-eta">' + fmtTime(new Date(nextEta)) + '</span>' : ''}</div>` +
     `<a class="nav-btn go-btn${navButtons(next.latitude, next.longtitude).primary.app === 'apple' ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Go</a>` +
     (vUrl ? `<a class="nav-btn log" id="log-visit" href="${escapeHtml(vUrl)}" target="_blank" rel="noopener">Log visit ✓</a>` : '');
   const log = document.getElementById('log-visit');
@@ -875,7 +875,8 @@ function fmtTime(d) {
 
 function summaryLine(count, totalMins, travelMode, end, endEta) {
   const icon = travelMode === 'WALK' ? '\u{1F6B6}' : '\u{1F697}';
-  const named = end && !end.same && end.name ? end.name + ' ' : '';
+  const short = end && end.name ? (end.name.length > 12 ? end.name.slice(0, 11).trim() + '\u2026' : end.name) : '';
+  const named = end && !end.same && short ? short + ' ' : '';
   const endTxt = endEta ? ` \u00b7 ends ${named}${fmtTime(new Date(endEta))}` : '';
   return `${count} stops \u00b7 ${totalMins} min \u00b7 ${icon}${endTxt}`;
 }
@@ -898,6 +899,9 @@ function updateEtas() {
   });
   const sum = document.getElementById('route-summary');
   if (sum) sum.textContent = routeSummaryText(currentRoute);
+  const ne = document.querySelector('#route-primary .next-eta');
+  const ni = currentRoute.stops.findIndex((s) => !s.done);
+  if (ne && ni >= 0 && etas[ni]) ne.textContent = fmtTime(new Date(etas[ni]));
 }
 setInterval(updateEtas, 60000);
 
