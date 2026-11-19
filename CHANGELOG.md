@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.9]
+- Fetch only the sheet columns the app uses (batchGet)
+
 ## [0.24.8]
 - PII guard in tests
 

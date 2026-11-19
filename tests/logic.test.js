@@ -6,6 +6,22 @@ const DAY = 864e5;
 const NOW = Date.UTC(2030, 5, 15);
 const row = (o) => Object.assign({ city: 'Testville', _name: 'alpha one', _sts: 'student', _visitMs: null }, o);
 
+// --- mergeColumnRanges: rebuild rows from column-limited batchGet ranges
+const merged = L.mergeColumnRanges([
+  { values: [['a0'], ['b0']] },
+  { values: [['c', 'd'], ['e']] },
+  { values: [['l'], []] },
+  { values: [[], ['v1']] }
+], [0, 2, 11, 21]);
+assert.strictEqual(merged.length, 2);
+assert.strictEqual(merged[0][0], 'a0');
+assert.strictEqual(merged[0][3], 'd');
+assert.strictEqual(merged[0][11], 'l');
+assert.strictEqual(merged[1][2], 'e');
+assert.strictEqual(merged[1][21], 'v1');
+assert.strictEqual(merged[0][1], undefined);
+assert.deepStrictEqual(L.mergeColumnRanges(null, []), []);
+
 // --- parseCityParam: old and new URL formats
 assert.strictEqual(L.parseCityParam(null), null);
 assert.strictEqual(L.parseCityParam('null'), null);

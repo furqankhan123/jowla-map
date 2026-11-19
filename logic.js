@@ -269,7 +269,22 @@
     return out;
   }
 
+  /** Rebuild full-width sheet rows from batchGet valueRanges fetched for only the used columns.
+      starts[i] = zero-based sheet column where range i begins; unfetched columns stay undefined. */
+  function mergeColumnRanges(valueRanges, starts) {
+    var rows = [];
+    (valueRanges || []).forEach(function (vr, i) {
+      (vr.values || []).forEach(function (cells, r) {
+        var row = rows[r] || (rows[r] = []);
+        for (var c = 0; c < cells.length; c++) row[starts[i] + c] = cells[c];
+      });
+    });
+    for (var k = 0; k < rows.length; k++) if (!rows[k]) rows[k] = [];
+    return rows;
+  }
+
   var api = {
+    mergeColumnRanges: mergeColumnRanges,
     decodePolyline: decodePolyline, countTurns: countTurns, streetKey: streetKey, streetSweepOrder: streetSweepOrder,
     bestStopSet: bestStopSet,
     isAutoVisit: isAutoVisit, parseCityParam: parseCityParam, matchesFilters: matchesFilters, filtersToQuery: filtersToQuery,

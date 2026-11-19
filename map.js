@@ -136,7 +136,8 @@ function initialiseMap() {
   if (ff) ff.addEventListener('click', openFilterSheet);
 
   var C = window.JOWLA_CONFIG;
-  var SHEET_URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + C.sheetId + '/values/' + C.sheetRange + '?key=' + C.sheetsKey;
+  var SHEET_URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + C.sheetId + '/values:batchGet?majorDimension=ROWS&' +
+    C.sheetRanges.map(function(r) { return 'ranges=' + encodeURIComponent(r); }).join('&') + '&key=' + C.sheetsKey;
 
   var lastLoad = 0;
   var controlsReady = false;
@@ -146,7 +147,8 @@ function initialiseMap() {
     if (typeof addOptimizeControl === 'function') addOptimizeControl(map);
   }
   function fetchSheet() {
-    return fetch(SHEET_URL).then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    return fetch(SHEET_URL).then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(d) { return { values: mergeColumnRanges(d.valueRanges, C.sheetRangeStarts) }; });
   }
   function onData(data, isRefresh) {
     var ledger = readLedger();
