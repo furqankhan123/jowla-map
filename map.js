@@ -363,7 +363,7 @@ function createMarker(map, location) {
   var img = document.createElement('img');
   img.src = "https://maps.google.com/mapfiles/kml/paddle/" + location.marker + ".png";
   img.width = 40; img.height = 40; img.alt = ''; img.style.display = 'block';
-  var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '' });
+  var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '', gmpClickable: true });
   marker.addEventListener('gmp-click', function() {
     window.__popupLoc = location;
     var e = escapeHtml;

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.23.2]
+- Fix marker popup: gmpClickable for gmp-click
+
 ## [0.23.1]
 - 7.12: gmp-click, loading=async, toast fix, quickLog ledger
 
