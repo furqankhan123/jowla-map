@@ -323,9 +323,13 @@ var clusterer = null;
 var sharedIw = null;
 function ensureClusterer(map) {
   if (!clusterer) {
+    var algo = new markerClusterer.SuperClusterAlgorithm({ maxZoom: 17, radius: 60 });
+    // The base class returns ALL markers unclustered at zoom >= maxZoom (39k DOM nodes). Raise only its
+    // check so SuperCluster keeps returning just the viewport's points; its own clustering maxZoom stays 17.
+    algo.maxZoom = 22;
     clusterer = new markerClusterer.MarkerClusterer({
       map: map, markers: [],
-      algorithm: new markerClusterer.SuperClusterAlgorithm({ maxZoom: 17, radius: 60 })
+      algorithm: algo
     });
   }
   return clusterer;

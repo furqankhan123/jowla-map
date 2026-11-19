@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.23.3]
+- Only viewport markers attached at high zoom (clusterer maxZoom shortcut)
+
 ## [0.23.2]
 - Fix marker popup: gmpClickable for gmp-click
 
