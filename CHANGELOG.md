@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.6]
+- Desktop: keep floating buttons visible when the route panel is expanded
+
 ## [0.24.5]
 - Respect hide-other-pins on data refresh/filter; title-case + maybe-rental tag in popup
 
