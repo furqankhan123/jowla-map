@@ -358,7 +358,8 @@ function setLocations(map, locs, keepView) {
     bounds.extend({ lat: loc.latitude, lng: loc.longtitude });
   }
   markers = list;
-  ensureClusterer(map).addMarkers(list);
+  try { ensureClusterer(map).addMarkers(list); }
+  catch (e) { console.warn('Cluster render deferred (map projection not ready):', e && e.message); } // redraws on the next idle
   // Only fit when the set is small: a few mis-geocoded rows (other states/countries) would zoom
   // an "All" view out to the whole world. Large sets keep the saved / default view.
   if (!keepView && list.length > 1 && list.length < 2000) {

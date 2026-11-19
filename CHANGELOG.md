@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.4]
+- Guard clusterer render before the map projection is ready (cold-load 'Could not load stops')
+
 ## [0.24.3]
 - Silent retry on stop-load failure, 10% trimmed fit
 
