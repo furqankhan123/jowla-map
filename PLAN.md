@@ -210,7 +210,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 Round 6 below is the ordered plan that was worked through; every item is DONE (6.10 live as 0.21.0) except 6.23 (deferred).
 
-## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; next: 7.9, 7.12, then 7.10)
+## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; next: 7.12, then 7.10)
 
 Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live site at 390x844 (load, tour, Optimize, sheet peek/half/full). Order rule as in Round 6: wrong-stop/visit-data issues first, then the main route sheet, then routing quality, then polish. Sizes: S < 1h, M a few hours, L a day+.
 
