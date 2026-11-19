@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.23.4]
+- Use SuperClusterViewportAlgorithm so only viewport markers are attached
+
 ## [0.23.3]
 - Only viewport markers attached at high zoom (clusterer maxZoom shortcut)
 
