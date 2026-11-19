@@ -210,7 +210,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 Round 6 below is the ordered plan that was worked through; every item is DONE (6.10 live as 0.21.0) except 6.23 (deferred).
 
-## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; next: 7.10 (experimental))
+## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; 7.1-7.7 and 7.11 DONE at 0.22.1; Round 7 complete)
 
 Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live site at 390x844 (load, tour, Optimize, sheet peek/half/full). Order rule as in Round 6: wrong-stop/visit-data issues first, then the main route sheet, then routing quality, then polish. Sizes: S < 1h, M a few hours, L a day+.
 
@@ -267,7 +267,7 @@ Source: owner requests (7.1-7.3, 7.8-7.10) and a Playwright pass on the live sit
 - **Fix (client-side, no extra API calls):** reuse `findClusters` ([logic.js](logic.js)) on the eligible stops in view; for each cluster and for the current nearest set, estimate `stops / (drive to cluster + estimateTourMins + return)`, and send the best set to the Routes API. Show which was chosen ("Best block: 14 stops, 3 min away"); Route settings gets "Stop choice: Nearest / Most visits per hour" (default the latter once tested).
 - **Verify:** unit test with synthetic points (a far dense cluster beats near scattered points); live: visits per hour in the summary goes up vs the nearest set in the same places.
 
-### 7.10 Turn-aware ordering (U-turn / left-turn penalty; experimental)
+### 7.10 Turn-aware ordering (U-turn / left-turn penalty; experimental)  [DONE 0.24.0, experimental: detector + setting live-checked (0 U-turns, 21 lefts on one test route); street-sweep alternative only unit-tested, needs a route with 2+ U-turns]
 - **Honest limit:** true "easiest drive" (no left turns, no U-turns) needs a routing engine with turn costs (GraphHopper or Valhalla, self-hosted or paid); Google's free-tier products do not offer it. Not planned.
 - **What we can do:** decode the returned polyline (already stored as `encoded`) and count sharp reversals (bearing change > 150° within ~50 m = U-turn) and left turns (change of -60° to -120°, right-hand traffic). Build a second order client-side ("street sweep": group stops by street name parsed from `address`, visit each street once in one direction, chain streets by nearest end, prefer right turns) and request it with `optimizeWaypointOrder: false` only when Google's order has 2 or more U-turns. Keep whichever has fewer `minutes + 1 min per U-turn + 0.3 min per left turn`. That is at most 2 Routes calls per Optimize; behind a setting "Fewer U-turns (uses one more request)".
 - **Verify:** the detector unit-tested on synthetic polylines; live comparison over 10 areas: U-turns and left turns per route before/after, and the added minutes.
