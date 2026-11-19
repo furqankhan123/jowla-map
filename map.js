@@ -200,11 +200,13 @@ function initialiseMap() {
     if (document.visibilityState === 'visible' && lastLoad && Date.now() - lastLoad > 30 * 60 * 1000) window.refreshData(true);
   });
 
-  function loadData() {
+  function loadData(retried) {
     if (window.showToast) showToast('Loading stops…', { sticky: true });
-    fetchSheet().then(function(d) { onData(d); }).catch(function() {
+    fetchSheet().then(function(d) { onData(d); }).catch(function(err) {
+      console.warn('Stop load failed:', err && err.message);
+      if (retried !== true) { setTimeout(function() { loadData(true); }, 1500); return; } // one silent retry
       initControls(); // still restore the saved route and its list without stop data
-      if (window.showToast) showToast('Could not load stops', { type: 'error', sticky: true, action: { label: 'Retry', onClick: loadData } });
+      if (window.showToast) showToast('Could not load stops', { type: 'error', sticky: true, action: { label: 'Retry', onClick: function() { loadData(true); } } });
     });
   }
   loadData();
@@ -365,7 +367,7 @@ function setLocations(map, locs, keepView) {
     if (la.length > 20) {
       var lats = la.map(function (p) { return p[0]; }).sort(function (a, b) { return a - b; });
       var lngs = la.map(function (p) { return p[1]; }).sort(function (a, b) { return a - b; });
-      var lo = Math.floor(la.length * 0.03), hi = Math.ceil(la.length * 0.97) - 1;
+      var lo = Math.floor(la.length * 0.1), hi = Math.ceil(la.length * 0.9) - 1;
       bounds = new google.maps.LatLngBounds({ lat: lats[lo], lng: lngs[lo] }, { lat: lats[hi], lng: lngs[hi] });
     }
     map.fitBounds(bounds);

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.3]
+- Silent retry on stop-load failure, 10% trimmed fit
+
 ## [0.24.2]
 - Truncate long end name in summary, fresh Next ETA, trimmed fit bounds for filtered views
 
