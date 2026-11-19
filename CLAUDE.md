@@ -9,7 +9,7 @@ Jowla Map: a static, no-build PWA (plain JS, no bundler, no runtime deps) served
 3. **Implement.** Edit the plain source files (`map.js`, `optimize-route.js`, `logic.js`, `map.html`, `map.css`, etc.). Put pure logic in `logic.js` / `segments.js` so it can be unit tested in Node.
 4. **Test.**
    - Add or update tests in `tests/*.test.js`, then run `node tests/run.js`. It syntax-checks every JS file and runs all tests, including the PII guard. CI runs the same command.
-   - For UI changes, verify in a browser with the Playwright MCP native tools (click, type, select, screenshot) at 390x844, plus 1280x800 for desktop layout. Use `browser_evaluate` only for read-only checks, geolocation stubs and offline toggling.
+   - For UI changes, verify in a browser with the Playwright MCP native tools (`browser_click`, `browser_type`, `browser_select_option`, `browser_take_screenshot`) at 390x844, plus 1280x800 for desktop layout. Native tooling is preferred for all Playwright testing: drive the UI the way a user would. Use `browser_evaluate` / `browser_run_code_unsafe` only for read-only checks, geolocation stubs and offline toggling.
    - Playwright has no real GPS: stub `navigator.geolocation.getCurrentPosition` and zoom to ~15 before Optimize.
    - Things that need a real phone (GPS, Apple/Google Maps handoff, touch sizing) are listed in the PLAN handoff as pending owner checks.
 5. **Release.** Every shipped change is a version bump:
