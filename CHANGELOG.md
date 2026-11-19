@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.22.0]
+- Round 7.1-7.7, 7.11: auto-rental rows ranked last, Next line above Go/Log, shorter summary, route pins above clusters, bigger done toggle, start source, title case names
+
 ## [0.21.4]
 - Fix offline data: the service worker now actually saves the sheet response (the old streaming write failed silently), and a failed data load still restores the saved route list.
 

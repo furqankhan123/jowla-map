@@ -41,6 +41,14 @@
     return true;
   }
 
+  /** Automation rows ("[auto] comment update" + "[auto]: maybe rental" tag with no human text) are not real visits. */
+  function isAutoVisit(loc) {
+    var vc = (loc.visitcode || '').toString().toLowerCase();
+    if (vc.indexOf('[auto]') === -1) return false;
+    var c = (loc.comments || '').toString().replace(/\[auto\]\s*:?\s*maybe rental\.?/gi, '').replace(/\[auto\][:\s]*/gi, '').trim();
+    return c === '';
+  }
+
   function filtersToQuery(f) {
     var params = [];
     if (f.city) params.push('City===' + encodeURIComponent("'" + f.city + "'"));
@@ -166,7 +174,7 @@
   }
 
   var api = {
-    parseCityParam: parseCityParam, matchesFilters: matchesFilters, filtersToQuery: filtersToQuery,
+    isAutoVisit: isAutoVisit, parseCityParam: parseCityParam, matchesFilters: matchesFilters, filtersToQuery: filtersToQuery,
     computeEtas: computeEtas, estimateTourMins: estimateTourMins, haversine: haversine, findClusters: findClusters, pickTravelMode: pickTravelMode
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

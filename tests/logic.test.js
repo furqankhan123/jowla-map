@@ -94,3 +94,9 @@ assert.strictEqual(L.pickTravelMode(tight, 'auto'), 'WALK');
 assert.strictEqual(L.pickTravelMode([tight[0]]), 'DRIVE');
 
 console.log('logic ok');
+
+// --- isAutoVisit
+assert.strictEqual(L.isAutoVisit({ visitcode: '[auto] comment update', comments: '[auto]: maybe rental' }), true);
+assert.strictEqual(L.isAutoVisit({ visitcode: '[auto] comment update', comments: '[auto]: maybe rental. Dog at home' }), false);
+assert.strictEqual(L.isAutoVisit({ visitcode: 'No Response', comments: '' }), false);
+console.log('isAutoVisit ok');

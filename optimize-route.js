@@ -83,14 +83,27 @@ function drawStartMarker() {
 function drawNumberedMarkers(map, ordered) {
   routeMarkers.forEach((m) => { m.map = null; });
   routeMarkers = ordered.map((s, i) => makeDotMarker(map, { lat: s.latitude, lng: s.longtitude },
-    { color: '#1a73e8', size: 26, text: String(i + 1), zIndex: 1000 + i }));
+    { color: '#137333', size: 28, text: String(i + 1), zIndex: 5000 + i }));
+  applyPinVisibility();
+}
 
+let hideOtherPins = true;
+/** While a route is shown the other pins (and cluster bubbles) are removed so route numbers stay readable. */
+function applyPinVisibility() {
+  if (!mapRef || !window.setLocations) return;
+  if (currentRoute && hideOtherPins) { if (window.clusterer) window.clusterer.clearMarkers(true); }
+  else setLocations(mapRef, window.visibleLocations || window.locations || [], true);
 }
 
 function clearRouteOverlays() {
   routeMarkers.forEach((m) => { m.map = null; });
   routeMarkers = [];
   if (currentPolyline) { currentPolyline.setMap(null); currentPolyline = null; }
+}
+
+function setPinsToggleLabel() {
+  const b = document.getElementById('toggle-pins');
+  if (b) b.textContent = hideOtherPins ? 'Show all pins' : 'Hide other pins';
 }
 
 const APP_VERSION = window.JOWLA_CONFIG.version;
@@ -169,14 +182,14 @@ function optimizeCurrentView(map, override) {
   const fallback = () => {
     const center = map.getCenter();
     showToast('Using map center — location unavailable');
-    run({ lat: center.lat(), lng: center.lng() });
+    run({ lat: center.lat(), lng: center.lng(), src: 'map center' });
   };
 
   if (opts.customStart) {
-    run({ lat: opts.customStart.lat, lng: opts.customStart.lng });
+    run({ lat: opts.customStart.lat, lng: opts.customStart.lng, src: opts.customStart.name || 'custom start' });
   } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => run({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => run({ lat: pos.coords.latitude, lng: pos.coords.longitude, src: 'GPS' }),
       fallback,
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
@@ -222,7 +235,8 @@ async function runOptimization(map, start, bounds, source) {
       ...loc,
       dist: haversine(start, { lat: loc.latitude, lng: loc.longtitude })
     }))
-    .sort((a, b) => a.dist - b.dist);
+    .map(loc => { loc.rank = loc._auto ? loc.dist * 3 + 0.3 : loc.dist; return loc; })
+    .sort((a, b) => a.rank - b.rank);
   candidates = dedupeByLatLng(candidates).slice(0, MAX_STOPS);
 
   if (candidates.length < 2) {
@@ -450,6 +464,12 @@ window.markRouteStopDone = function (loc) {
   if (s) markStopDone(s);
 };
 /** Refresh done-state visuals: rows, markers and the primary nav button. */
+function titleCase(n) {
+  if (!n) return '';
+  return n === n.toUpperCase() || n === n.toLowerCase()
+    ? n.toLowerCase().replace(/(^|[\s\-'(])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : n;
+}
+
 function updateDoneUi() {
   if (!currentRoute) return;
   const stops = currentRoute.stops;
@@ -457,7 +477,7 @@ function updateDoneUi() {
     const done = !!stops[+row.dataset.i].done;
     row.classList.toggle('done', done);
     const b = row.querySelector('.done-btn');
-    if (b) b.textContent = done ? '✓' : '○';
+    if (b) { b.setAttribute('aria-pressed', done ? 'true' : 'false'); b.classList.toggle('on', done); }
   });
   routeMarkers.forEach((m, i) => { m.content.style.opacity = stops[i] && stops[i].done ? 0.35 : 1; });
   updateEtas();
@@ -472,7 +492,9 @@ function updateDoneUi() {
   }
   const n = stops.indexOf(next) + 1;
   const vUrl = window.visitDetailsUrl ? visitDetailsUrl(next) : '';
-  el.innerHTML = `<a class="nav-btn${navButtons(next.latitude, next.longtitude).primary.app === 'apple' ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Go: ${n}. ${escapeHtml(next.name || next.address || 'Stop')}</a>` +
+  const nextEta = computeEtas(stops, currentRoute.legSecs, Date.now()).etas[n - 1];
+  el.innerHTML = `<div class="next-line">Next \u00b7 <b>${n}. ${escapeHtml(titleCase(next.name) || next.address || 'Stop')}</b>${nextEta ? ' \u00b7 ' + fmtTime(new Date(nextEta)) : ''}</div>` +
+    `<a class="nav-btn go-btn${navButtons(next.latitude, next.longtitude).primary.app === 'apple' ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Go</a>` +
     (vUrl ? `<a class="nav-btn log" id="log-visit" href="${escapeHtml(vUrl)}" target="_blank" rel="noopener">Log visit ✓</a>` : '');
   const log = document.getElementById('log-visit');
   if (log) log.addEventListener('click', () => markStopDone(next));
@@ -816,14 +838,18 @@ function fmtTime(d) {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+function summaryLine(count, totalMins, travelMode, end, endEta) {
+  const icon = travelMode === 'WALK' ? '\u{1F6B6}' : '\u{1F697}';
+  const named = end && !end.same && end.name ? end.name + ' ' : '';
+  const endTxt = endEta ? ` \u00b7 ends ${named}${fmtTime(new Date(endEta))}` : '';
+  return `${count} stops \u00b7 ${totalMins} min \u00b7 ${icon}${endTxt}`;
+}
 function routeSummaryText(route) {
-  const modeText = route.travelMode === 'WALK' ? 'walking' : 'driving';
   const left = route.stops.filter((x) => !x.done).length;
   const { endEta } = computeEtas(route.stops, route.legSecs, Date.now());
-  const endName = route.end ? route.end.name : (route.start ? 'start' : '');
-  const endTxt = endEta && endName ? ` · ends at ${endName} ${fmtTime(new Date(endEta))}` : '';
+  const end = route.end || (route.start ? { same: true } : null);
   const count = left < route.stops.length ? `${left} of ${route.stops.length}` : `${route.stops.length}`;
-  return `${count} stops · ~${route.totalMins} min · ${modeText}${endTxt}`;
+  return summaryLine(count, route.totalMins, route.travelMode, end, end ? endEta : null);
 }
 function updateEtas() {
   if (!currentRoute) return;
@@ -850,13 +876,13 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
 
   if (!end && start) end = { lat: start.lat, lng: start.lng, name: 'start', same: true };
   const endStop = end ? { latitude: end.lat, longtitude: end.lng, name: end.name } : null;
-  let endEta = '';
+  let endEta = null;
   if (endStop && legSecs && legSecs.length > orderedStops.length) {
-    const tEnd = Date.now() + (legSecs.reduce((a, b) => a + b, 0) + orderedStops.length * AVG_VISIT_MINS * 60) * 1000;
-    endEta = ` · ends at ${endStop.name} ${fmtTime(new Date(tEnd))}`;
+    endEta = Date.now() + (legSecs.reduce((a, b) => a + b, 0) + orderedStops.length * AVG_VISIT_MINS * 60) * 1000;
   }
-  document.getElementById('route-summary').textContent =
-    `${orderedStops.length} stops · ~${totalMins} min · ${modeText}${endEta}`;
+  const sumEl = document.getElementById('route-summary');
+  sumEl.textContent = summaryLine(orderedStops.length, totalMins, travelMode, end, endEta);
+  sumEl.title = `${orderedStops.length} stops, about ${totalMins} min, ${modeText}`;
   // Navigation links run to the end point as the final destination.
   const navStops = endStop ? orderedStops.concat([endStop]) : orderedStops;
 
@@ -877,7 +903,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
     ? `<a class="nav-btn${pref === 'apple' ? ' apple' : ''}" href="${e(prim[0].url)}" target="_blank" rel="noopener">Start in ${appName(pref)}${prim.length > 1 ? ' (' + e(prim[0].label) + ')' : ''}</a>`
     : '';
 
-  const startsAt = opts.customStart ? 'custom start' : 'GPS';
+  const startsAt = (start && start.src) || (opts.customStart ? 'custom start' : 'GPS');
   let html = `<div class="meta">From filtered map view &middot; starts at ${startsAt}</div><ol>`;
   let t = Date.now();
   orderedStops.forEach((s, i) => {
@@ -885,8 +911,8 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
     const eta = legSecs && legSecs.length ? `<span class="eta">${fmtTime(new Date(t))}</span>` : '';
     const nb = navButtons(s.latitude, s.longtitude);
     const detailsUrl = visitDetailsUrl(s);
-    html += `<li class="stop-row" data-i="${i}"><button type="button" class="done-btn" aria-label="Mark done">○</button><span class="num">${i + 1}</span>` +
-      `<span class="nm">${eta}${e(s.name || s.address || 'Stop')}</span>` +
+    html += `<li class="stop-row" data-i="${i}"><button type="button" class="done-btn" aria-label="Mark done" aria-pressed="false"><span class="chk"></span></button><span class="num">${i + 1}</span>` +
+      `<span class="nm">${eta}${e(titleCase(s.name) || s.address || 'Stop')}</span>` +
       (detailsUrl ? `<a class="go visit" href="${e(detailsUrl)}" target="_blank" rel="noopener">Log</a>` : '') +
       `<a class="go" href="${e(nb.primary.url)}" target="_blank" rel="noopener">Go</a></li>`;
     t += AVG_VISIT_MINS * 60 * 1000; // time spent at this stop
@@ -901,6 +927,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
   html += `</ol>`;
   if (end && !end.same) html += `<button type="button" class="nav-btn reset-end">Reset: return to start</button>`;
   else html += `<button type="button" class="nav-btn set-end">Set a different end point…</button>`;
+  html += `<button type="button" class="nav-btn secondary" id="toggle-pins"></button>`;
   html += `<div id="end-picker" hidden></div>`;
 
   html += `<div class="seg-grid">${segRow(pref)}${segRow(otherApp)}</div>`;
@@ -922,6 +949,8 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
     });
   });
 
+  const tp = body.querySelector('#toggle-pins');
+  if (tp) { setPinsToggleLabel(); tp.addEventListener('click', () => { hideOtherPins = !hideOtherPins; setPinsToggleLabel(); applyPinVisibility(); }); }
   const setEnd = body.querySelector('.set-end');
   if (setEnd) setEnd.addEventListener('click', openEndPicker);
   const rst = body.querySelector('.reset-end');
@@ -940,6 +969,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
 window.clearRoute = function () {
   clearRouteOverlays();
   currentRoute = null;
+  applyPinVisibility();
   try { localStorage.removeItem(ROUTE_KEY); } catch (e) {}
   const panel = document.getElementById('route-panel');
   if (panel) panel.classList.remove('visible', 'minimized');

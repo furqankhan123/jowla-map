@@ -7,7 +7,8 @@ var frisco = {lat: 33.0597, lng: -96.7512};
 /** Cached lowercase/parsed fields so filter passes do no string/date work per row. */
 function setVisitMs(loc) {
   var t = loc.visitdate ? new Date(loc.visitdate).getTime() : NaN;
-  loc._visitMs = isNaN(t) ? null : t;
+  loc._auto = !!(window.isAutoVisit && window.isAutoVisit(loc));
+  loc._visitMs = (isNaN(t) || loc._auto) ? null : t;
 }
 function prepRow(loc) {
   loc._name = (loc.name || '').toLowerCase();
