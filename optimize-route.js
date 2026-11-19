@@ -189,7 +189,10 @@ function optimizeCurrentView(map, override) {
     run({ lat: opts.customStart.lat, lng: opts.customStart.lng, src: opts.customStart.name || 'custom start' });
   } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => run({ lat: pos.coords.latitude, lng: pos.coords.longitude, src: 'GPS' }),
+      (pos) => run({
+        lat: pos.coords.latitude, lng: pos.coords.longitude, src: 'GPS',
+        heading: (pos.coords.heading != null && !isNaN(pos.coords.heading) && pos.coords.speed > 2) ? Math.round(pos.coords.heading) % 360 : null
+      }),
       fallback,
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
@@ -294,25 +297,28 @@ async function requestRoute(start, candidates, endPoint) {
   const endPt = endPoint ? { lat: endPoint.lat, lng: endPoint.lng } : { lat: start.lat, lng: start.lng };
   const intermediates = candidates;
 
-  const body = {
-    origin: { location: { latLng: { latitude: start.lat, longitude: start.lng } } },
+  // DRIVE only: start in the direction of travel and arrive on the house's side (fewer U-turns).
+  const drive = travelMode !== 'WALK';
+  const buildBody = (hints) => ({
+    origin: { location: Object.assign({ latLng: { latitude: start.lat, longitude: start.lng } }, hints && start.heading != null ? { heading: start.heading } : {}) },
     destination: { location: { latLng: { latitude: endPt.lat, longitude: endPt.lng } } },
-    intermediates: intermediates.map(c => ({ location: { latLng: { latitude: c.latitude, longitude: c.longtitude } } })),
+    intermediates: intermediates.map(c => Object.assign({ location: { latLng: { latitude: c.latitude, longitude: c.longtitude } } }, hints ? { sideOfRoad: true } : {})),
     travelMode: travelMode,
     optimizeWaypointOrder: true
-  };
-
-  try {
-    const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
+  });
+  const post = (hints) => fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': API_KEY,
         'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.optimizedIntermediateWaypointIndex,routes.legs.duration'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(buildBody(hints))
     });
 
+  try {
+    let res = await post(drive);
+    if (!res.ok && drive && res.status === 400) res = await post(false); // hints rejected: plain request
     if (!res.ok) {
       const errText = await res.text();
       showToast('Routes API error ' + res.status + ': ' + errText.slice(0, 120), { type: 'error' });

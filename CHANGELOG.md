@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.22.2]
+- 7.8: GPS heading on origin and sideOfRoad on stops for driving (falls back to a plain request on 400)
+
 ## [0.22.1]
 - Shorter summary count (14/15 stops)
 
