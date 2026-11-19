@@ -171,7 +171,7 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 - **UI:** the end point appears as a final row in the stop list (no Visit/Done buttons) with its ETA. Google/Apple navigation URLs use the chosen end as `destination` (Apple/Google segments: final segment ends at the end point).
 - **Edge cases:** end equals start with one stop; end unreachable by mode; Routes API waypoint cap (25 intermediates) still applies.
 - **Verify:** same-start/end round trip adds the return time; different end changes the order and total; fit-to-time respects it; clearing the end returns to same-as-start; persisted route restores the end.
-## Session handoff (state at v0.24.6 on `main`, live on GitHub Pages; read this first)
+## Session handoff (state at v0.24.7 on `main`, live on GitHub Pages; read this first)
 
 **How to work:** work on `main` (or a branch fast-forwarded to it); GitHub Pages serves `main`: https://furqankhan123.github.io/ . Commit + push each non-trivial change. Release with `node tools/bump-version.js X.Y.Z "changelog line" ["plan row"]` (updates config.js version, every `?v=`, `CACHE_VERSION`, CHANGELOG, PLAN row). Run `node tests/run.js` (syntax check of every JS file plus all `tests/*.test.js`) before pushing; CI runs it too. Live site: https://furqankhan123.github.io/jowla-map-optimize/newindex.html (Pages takes ~1-2 min; `curl .../sw.js | grep CACHE_VERSION` shows what is deployed). After a deploy the service worker serves the old files, see testing tips.
 
@@ -179,10 +179,14 @@ Build section C exactly as specified (shared `navLinks` helper, remove `isIOS`, 
 
 **Built and live (Rounds 1-7 complete):** mobile-first sheet; Optimize (GPS start, fit-to-time, ETAs, numbered markers); Go/Log/done flow; quick-log chips; in-map filters; cluster suggestions; PWA shell + offline route list; round trip by default, custom end by address (Places API (New) + Geocoder) or saved place; Walk/Drive/Auto; Google/Apple segment links (`segments.js`); preferred maps app; first-run tour; Refresh data; local visit ledger; sheet-load retry.
 Round 7 (0.22.0-0.24.6): "[auto] maybe rental" rows count as never visited and rank last (`isAutoVisit`); Next-stop line above Go/Log; short summary line ("11 stops · 60 min · car · ends 7:09 PM", long end names truncated); green route pins above clusters with "Hide other pins" (other pins stay hidden on refresh/filter while a route is shown, `window.pinsHiddenForRoute`); bigger done toggle; start source label (GPS / map center / custom); Title Case names (list, next line, popup; `window.titleCase`); driving requests send GPS `heading` (only when moving, speed > 2 m/s) and `sideOfRoad`, with a plain retry on HTTP 400; Settings: "Stop choice" (Nearest / Most visits per hour, `bestStopSet` in logic.js, default Nearest) and "Fewer U-turns" (Off by default; `decodePolyline`, `countTurns`, `streetSweepOrder` in logic.js; if Google's order has 2+ U-turns a street-sweep order is requested with `optimizeWaypointOrder:false` and the cheaper of the two is kept); clusterer uses `SuperClusterViewportAlgorithm` (only viewport markers attached, 39k -> ~200); `gmp-click` + `gmpClickable` on pins; `loading=async`; filtered views fit to the central 80% of pins; desktop keeps the floating buttons visible.
+0.24.7 (Round 8 fixes 8.1-8.3): desktop Minimize really collapses the route card (a CSS specificity bug made it a no-op); maybe-rental popups hide the automation comment and script date; a maybe-rental stop logged on this device (`loc._localVisit`) stops being `_auto`, so it is not offered again.
 
 **Verified live in Playwright (native tools, 390x844 unless noted):** everything above plus filters, cluster suggestions, mid-route re-plan, saved places (save, use as end, delete), end-point autocomplete, Refresh data, Walk + Apple Maps preference, offline reload (cached data + saved route list), tour, desktop 1280x800 layout, done state surviving a reload, and quick-log: all three chips (No Response, Left Message, Gave Targheeb) each sent a 200 formResponse GET and the sheet row updated (done once, on a test row with the owner's OK; the row ends as "No Response", 2026-11-18).
 
+0.24.7 verified live (1280x800, native clicks): Minimize hides list + primary row and shows "+", Expand restores; maybe-rental popup shows name, "maybe rental" tag, address, buttons only; a normal pin still shows Comments + Last visit; `ledgerRecord` on an auto row clears `_auto` and sets `_visitMs`, undo restores (local only, nothing sent).
+
 **Verified facts (don't re-derive):**
+- Desktop route-card CSS: `#route-panel:not(.half):not(.full) #route-panel-body` (2 ids + 2 classes) outranks `#route-panel.minimized ...` (2 ids + 1 class); any new "always show" rule must also carry `:not(.minimized)`.
 - Google segment URLs: explicit `origin` (previous destination) + raw `lat,lng` waypoints joined by `|` works; encoded commas made the Google Maps app load forever.
 - Apple Maps: a fixed `source=` makes Apple show only **Steps**; omitting it (start = Current Location) shows **Go** (CONFIRMED on iPhone). Apple's practical cap is 15 points per link.
 - Places legacy API is unavailable for new projects; the key must allow Places API (New) and Geocoding API.
@@ -211,6 +215,42 @@ Round 7 (0.22.0-0.24.6): "[auto] maybe rental" rows count as never visited and r
 8. **Ongoing (owner, Cloud Console):** keep both API keys HTTP-referrer restricted, add per-key API restrictions and a daily Routes API quota cap (both keys are currently the same string in `config.js`).
 
 Round 6 and Round 7 below are the ordered plans that were worked through; all items are DONE except 6.23 (deferred) and the evaluation work listed above.
+
+## Round 8: owner screenshots + improvement review (collected 2026-11-18 at 0.24.6)
+
+Source: owner screenshots (maybe-rental popup, desktop route card) and a Playwright pass at 1280x800 on 0.24.7. Order rule as before: visit-data issues first, then the route card, then polish. Sizes: S < 1h, M a few hours.
+
+| # | Item | Type | Size | Status |
+|---|------|------|------|--------|
+| 8.1 | Maybe-rental popup shows "Comments: [auto]: maybe rental" and the script date as "Last visit" | bug | S | DONE 0.24.7 |
+| 8.2 | Desktop Minimize leaves the ordered list visible | bug | S | DONE 0.24.7 |
+| 8.3 | A maybe-rental stop logged via Log visit / done toggle stays `_auto` and is offered again | bug | S | DONE 0.24.7 |
+| 8.4 | Popup "Visit Details" marks the route stop done just by opening the form | bug/UX | S | open |
+| 8.5 | Minimized state is lost on any re-render | UX | S | open |
+| 8.6 | Maybe-rental pins look like never-visited pins on the map | UX | S | open |
+| 8.7 | Quick-log chips in the marker popup for route stops | UX | S | open |
+| 8.8 | Desktop card summary wraps to two lines at 340px | polish | S | open |
+| 8.9 | Escape key closes popup / minimizes the card on desktop | polish | S | open |
+
+### 8.4 Visit Details marks done on open
+- `map.js` popup link runs `markRouteStopDone(window.__popupLoc)` on click, which also writes the local ledger (6.2). If the user opens the form and backs out, the stop is marked done and dropped from the next Optimize.
+- **Fix:** keep the mark (it is usually right) but show the action toast "Marked done · Undo" (the quick-log Undo pattern in writeback.js), or mark only when the page regains focus after the form tab.
+- **Verify:** open Visit Details, close the tab, tap Undo: the row is undone and the ledger entry is gone.
+
+### 8.5 Remember minimized
+- `showRoutePanel` (`optimize-route.js` ~line 1000) always removes `.minimized`, so a settings change, mid-route re-plan or Refresh data expands the card again. Store the state in localStorage `jowla-route-min` (desktop only) and reapply it after render; a freshly built route still opens expanded.
+
+### 8.6 Distinguish maybe-rental pins
+- 378 rows are `_auto`. Give them a grey or hollow paddle so they are not confused with real never-visited stops. Popup and route rows already carry the "maybe rental" tag.
+
+### 8.7 Quick-log from the popup
+- When the popup's location is a stop on the current route, show the three quick-log chips (No Response / Left Message / Gave Targheeb) under the buttons, reusing `quickLog` and its cooldown + Undo window (6.1, 6.3). This saves opening the sheet when the user taps a house on the map. Never test it against the real sheet without the owner's OK.
+
+### 8.8 One-line desktop summary
+- "10/11 stops · 60 min · 🚗 · ends 9:38 PM" wraps at 340px because of the two header buttons. Widen the card to 360px or drop "stops" to "10/11 ·" when it would wrap; the full text stays in the `title`.
+
+### 8.9 Keyboard on desktop
+- Escape closes an open popup first, otherwise minimizes the route card. Header buttons already have titles; add `aria-expanded` on the Minimize button.
 
 ## Round 7: owner ideas + live UI review (collected 2026-11-18 at 0.21.4; ALL DONE 0.22.0-0.24.6, see the handoff for what still needs evaluation)
 
