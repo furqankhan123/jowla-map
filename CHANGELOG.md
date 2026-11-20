@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.25.2]
+- Keep old cluster markers on screen ~300ms until the new ones appear (cluster flicker)
+
 ## [0.25.1]
 - Stop re-rendering every cluster marker on each small pan (cause of marker flicker)
 

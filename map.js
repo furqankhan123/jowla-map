@@ -358,6 +358,35 @@ function ensureClusterer(map) {
       map: map, markers: [],
       algorithm: algo
     });
+    // Stock render() removes the previous cluster markers one animation frame after creating the new
+    // ones. New advanced markers take longer than that to appear on a phone, so every cluster briefly
+    // vanishes (the flicker in the recordings). Same logic, but the old markers are removed ~300ms later,
+    // and only if the latest render did not reuse them.
+    var MU = markerClusterer.MarkerUtils, EV = markerClusterer.MarkerClustererEvents;
+    clusterer.render = function () {
+      var m = this.getMap();
+      if (!(m instanceof google.maps.Map) || !m.getProjection()) return;
+      google.maps.event.trigger(this, EV.CLUSTERING_BEGIN, this);
+      var r = this.algorithm.calculate({ markers: this.markers, map: m, mapCanvasProjection: this.getProjection() });
+      if (r.changed || r.changed == null) {
+        var keep = new Set();
+        r.clusters.forEach(function (c) { if (c.markers.length === 1) keep.add(c.markers[0]); });
+        var stale = [];
+        this.clusters.forEach(function (c) {
+          if (c.marker == null) return;
+          if (c.markers.length !== 1 || !keep.has(c.marker)) stale.push(c.marker);
+        });
+        this.clusters = r.clusters;
+        this.renderClusters();
+        var self = this;
+        setTimeout(function () {
+          var live = new Set();
+          self.clusters.forEach(function (c) { if (c.marker != null) live.add(c.marker); });
+          stale.forEach(function (x) { if (!live.has(x)) MU.setMap(x, null); });
+        }, 300);
+      }
+      google.maps.event.trigger(this, EV.CLUSTERING_END, this);
+    };
   }
   return clusterer;
 }
