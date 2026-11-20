@@ -144,6 +144,8 @@ console.log('isAutoVisit ok');
   assert.deepStrictEqual(L.countTurns([P(40, -100), P(40.001, -100), P(40.001, -99.999)]), { uturns: 0, lefts: 0 });
   assert.strictEqual(L.streetKey('123 Main St, Testville'), 'main st');
   assert.strictEqual(L.streetKey('45B Oak Ave Apt 3, Town'), 'oak ave');
+  assert.strictEqual(L.addressLine1('123 Main St, Testville'), '123 Main St');
+  assert.strictEqual(L.addressLine1(null), '');
   // sweep: two streets, stops interleaved in the input -> grouped per street, monotone along each
   const mk = (n, a, lat, lng) => ({ name: n, address: a, latitude: lat, longtitude: lng });
   const stops = [mk('a1', '1 Oak Ave, T', 40.000, -100), mk('b1', '2 Elm St, T', 40.000, -100.01), mk('a3', '5 Oak Ave, T', 40.002, -100), mk('b2', '4 Elm St, T', 40.002, -100.01), mk('a2', '3 Oak Ave, T', 40.001, -100), mk('b3', '6 Elm St, T', 40.001, -100.01)];

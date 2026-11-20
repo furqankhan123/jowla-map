@@ -241,6 +241,11 @@
     return first;
   }
 
+  /** "123 Main St, Town" -> "123 Main St" (first address line, trimmed). */
+  function addressLine1(address) {
+    return String(address || '').split(',')[0].trim();
+  }
+
   /** "Street sweep": visit each street once in one direction, chain streets by nearest end. */
   function streetSweepOrder(start, stops) {
     var groups = {};
@@ -285,7 +290,7 @@
 
   var api = {
     mergeColumnRanges: mergeColumnRanges,
-    decodePolyline: decodePolyline, countTurns: countTurns, streetKey: streetKey, streetSweepOrder: streetSweepOrder,
+    decodePolyline: decodePolyline, countTurns: countTurns, streetKey: streetKey, addressLine1: addressLine1, streetSweepOrder: streetSweepOrder,
     bestStopSet: bestStopSet,
     isAutoVisit: isAutoVisit, parseCityParam: parseCityParam, matchesFilters: matchesFilters, filtersToQuery: filtersToQuery,
     computeEtas: computeEtas, estimateTourMins: estimateTourMins, haversine: haversine, findClusters: findClusters, pickTravelMode: pickTravelMode

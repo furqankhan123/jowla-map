@@ -334,7 +334,7 @@ var clusterer = null;
 var sharedIw = null;
 function ensureClusterer(map) {
   if (!clusterer) {
-    var algo = new markerClusterer.SuperClusterViewportAlgorithm({ maxZoom: 17, radius: 60, viewportPadding: 120 });
+    var algo = new markerClusterer.SuperClusterViewportAlgorithm({ maxZoom: 17, radius: 60, viewportPadding: 300 });
     // The base class returns ALL markers unclustered at zoom >= maxZoom (39k DOM nodes). Raise only its
     // check so SuperCluster keeps returning just the viewport's points; its own clustering maxZoom stays 17.
     algo.maxZoom = 22;
@@ -410,7 +410,7 @@ function createMarker(map, location) {
   }
   var img = pinTemplate.cloneNode(false);
   img.src = "https://maps.google.com/mapfiles/kml/paddle/" + location.marker + ".png";
-  img.loading = 'lazy';
+  img.decoding = 'sync'; // lazy-loaded imgs pop in late when a marker re-enters the view
   var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '', gmpClickable: true });
   marker.addEventListener('gmp-click', function() {
     window.__popupLoc = location;

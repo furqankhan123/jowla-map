@@ -90,6 +90,7 @@ body.no-sheet #fab-group { bottom: calc(24px + env(safe-area-inset-bottom)); }
     color: #fff; font-size: 13px; font-weight: bold; display: flex; align-items: center; justify-content: center;
 }
 .stop-row .nm { flex: 1; min-width: 0; }
+.stop-row .nm .addr { display: block; font-size: 12px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stop-row .eta { color: var(--blue); font-weight: bold; font-size: 12px; margin-right: 4px; }
 .stop-row a.go { flex: none; padding: 12px 8px; color: var(--blue); font-weight: bold; text-decoration: none; }
 a.nav-btn, button.nav-btn {

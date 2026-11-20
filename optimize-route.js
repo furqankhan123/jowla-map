@@ -542,14 +542,18 @@ function renderRoute(map, route, fresh) {
   drawNumberedMarkers(map, route.stops);
 }
 
+let restoringRoute = false;
+
 function restoreLastRoute(map) {
   try {
     const raw = localStorage.getItem(ROUTE_KEY);
     if (!raw) return;
     const route = JSON.parse(raw);
     if (!route || Date.now() - route.savedAt > ROUTE_MAX_AGE_MS) return;
+    restoringRoute = true;
     renderRoute(map, route);
   } catch (e) {}
+  restoringRoute = false;
 }
 
 
@@ -952,8 +956,9 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
     const eta = legSecs && legSecs.length ? `<span class="eta">${fmtTime(new Date(t))}</span>` : '';
     const nb = navButtons(s.latitude, s.longtitude);
     const detailsUrl = visitDetailsUrl(s);
+    const line1 = s.name ? addressLine1(s.address) : '';
     html += `<li class="stop-row" data-i="${i}"><button type="button" class="done-btn" aria-label="Mark done" aria-pressed="false"><span class="chk"></span></button><span class="num">${i + 1}</span>` +
-      `<span class="nm">${eta}${e(titleCase(s.name) || s.address || 'Stop')}</span>` +
+      `<span class="nm">${eta}${e(titleCase(s.name) || s.address || 'Stop')}${line1 ? `<span class="addr">${e(line1)}</span>` : ''}</span>` +
       (detailsUrl ? `<a class="go visit" href="${e(detailsUrl)}" target="_blank" rel="noopener">Log</a>` : '') +
       `<a class="go" href="${e(nb.primary.url)}" target="_blank" rel="noopener">Go</a></li>`;
     t += AVG_VISIT_MINS * 60 * 1000; // time spent at this stop
@@ -998,9 +1003,17 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
   if (rst) rst.addEventListener('click', () => rerouteWithEnd(null));
 
   panel.classList.remove('minimized');
-  panel.classList.add('visible');
-  document.body.classList.remove('no-sheet', 'route-closed');
-  setSheet(freshRoute ? 'peek' : savedSheet());
+  if (restoringRoute) {
+    // Reopened app: keep the list closed; the route FAB opens it on demand.
+    restoringRoute = false;
+    panel.classList.remove('visible');
+    document.body.classList.add('no-sheet', 'route-closed');
+    document.body.classList.remove('sheet-expanded');
+  } else {
+    panel.classList.add('visible');
+    document.body.classList.remove('no-sheet', 'route-closed');
+    setSheet(freshRoute ? 'peek' : savedSheet());
+  }
   freshRoute = false;
   if (scroller) scroller.scrollTop = keepScroll;
   document.getElementById('route-minimize-btn').textContent = '–';
@@ -1030,7 +1043,9 @@ window.addEventListener('load', function () {
       const route = JSON.parse(raw);
       if (!route || !route.stops || Date.now() - route.savedAt > ROUTE_MAX_AGE_MS) return;
       currentRoute = route;
+      restoringRoute = true;
       showRoutePanel(route.stops, route.totalMins, route.travelMode, route.start, route.legSecs, route.end);
+      restoringRoute = false;
       updateDoneUi();
       showToast('Map unavailable offline; route list still works', { type: 'error' });
     } catch (e) {}

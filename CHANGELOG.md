@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.13]
+- Keep route list closed on reopen, show address line 1 under stop names, reduce marker flicker
+
 ## [0.24.12]
 - Lazy map markers (no crash on All) and city typeahead in filters
 
