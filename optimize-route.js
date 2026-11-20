@@ -526,7 +526,7 @@ function updateDoneUi() {
   const n = stops.indexOf(next) + 1;
   const vUrl = window.visitDetailsUrl ? visitDetailsUrl(next) : '';
   const nextEta = computeEtas(stops, currentRoute.legSecs, Date.now()).etas[n - 1];
-  el.innerHTML = `<div class="next-line">Next \u00b7 <b>${n}. ${escapeHtml(titleCase(next.name) || next.address || 'Stop')}</b>${nextEta ? ' \u00b7 <span class="next-eta">' + fmtTime(new Date(nextEta)) + '</span>' : ''}</div>` +
+  el.innerHTML = `<div class="next-line">Next \u00b7 <b>${n}. ${escapeHtml(titleCase(next.name) || next.address || 'Stop')}</b>${nextEta ? ' \u00b7 <span class="next-eta">' + fmtTime(new Date(nextEta)) + '</span>' : ''}${next.name && addressLine1(next.address) ? `<span class="addr">${escapeHtml(addressLine1(next.address))}</span>` : ''}</div>` +
     `<a class="nav-btn go-btn${navButtons(next.latitude, next.longtitude).primary.app === 'apple' ? ' apple' : ''}" href="${escapeHtml(nextStopUrl(next))}" target="_blank" rel="noopener">Go</a>` +
     (vUrl ? `<a class="nav-btn log" id="log-visit" href="${escapeHtml(vUrl)}" target="_blank" rel="noopener">Log visit ✓</a>` : '');
   const log = document.getElementById('log-visit');

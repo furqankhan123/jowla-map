@@ -145,6 +145,7 @@ details.route-settings-box { margin-top: 12px; }
 
 /* Visit -> Next */
 #route-primary { display: flex; flex-wrap: wrap; gap: 8px; }
+#route-primary .next-line .addr { display: block; font-size: 12px; color: #666; }
 #route-primary .next-line { flex: 0 0 100%; margin-top: 6px; font-size: 15px; line-height: 1.3; word-break: break-word; }
 #route-primary .nav-btn { flex: 1; width: auto; }
 a.nav-btn.log { flex: 0 0 38%; background: var(--blue); }

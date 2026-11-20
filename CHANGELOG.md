@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.24.14]
+- Show address line 1 under the Next stop in the route header
+
 ## [0.24.13]
 - Keep route list closed on reopen, show address line 1 under stop names, reduce marker flicker
 
