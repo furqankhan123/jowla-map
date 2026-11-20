@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.25.4]
+- Shorten cluster marker overlap to 150ms to reduce lag
+
 ## [0.25.3]
 - Lighter cluster circles (styled div instead of SVG) to reduce pan lag
 
