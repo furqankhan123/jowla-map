@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.25.3]
+- Lighter cluster circles (styled div instead of SVG) to reduce pan lag
+
 ## [0.25.2]
 - Keep old cluster markers on screen ~300ms until the new ones appear (cluster flicker)
 

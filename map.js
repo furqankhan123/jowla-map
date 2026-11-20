@@ -356,7 +356,28 @@ function ensureClusterer(map) {
     algo.maxZoom = 22;
     clusterer = new markerClusterer.MarkerClusterer({
       map: map, markers: [],
-      algorithm: algo
+      algorithm: algo,
+      // Same look as the stock SVG cluster (blue, red when above average, soft halo) but a plain styled
+      // div: no per-cluster SVG text parsing, much cheaper to build when hundreds are re-rendered.
+      renderer: {
+        render: function (cluster, stats) {
+          var count = cluster.count;
+          var red = count > Math.max(10, stats.clusters.markers.mean);
+          var rgb = red ? '255,0,0' : '0,0,255';
+          var el = document.createElement('div');
+          el.className = 'cl-dot';
+          el.style.cssText = 'width:50px;height:50px;display:flex;align-items:center;justify-content:center;';
+          var dot = document.createElement('div');
+          dot.textContent = count;
+          dot.style.cssText = 'width:29px;height:29px;border-radius:50%;color:#fff;font:10px/29px roboto,arial,sans-serif;text-align:center;' +
+            'background:rgba(' + rgb + ',.6);box-shadow:0 0 0 4px rgba(' + rgb + ',.3),0 0 0 8px rgba(' + rgb + ',.2);';
+          el.appendChild(dot);
+          return new google.maps.marker.AdvancedMarkerElement({
+            position: cluster.position, content: el, title: 'Cluster of ' + count + ' markers',
+            zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count
+          });
+        }
+      }
     });
     // Stock render() removes the previous cluster markers one animation frame after creating the new
     // ones. New advanced markers take longer than that to appear on a phone, so every cluster briefly
