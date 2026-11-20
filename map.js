@@ -334,7 +334,23 @@ var clusterer = null;
 var sharedIw = null;
 function ensureClusterer(map) {
   if (!clusterer) {
-    var algo = new markerClusterer.SuperClusterViewportAlgorithm({ maxZoom: 17, radius: 60, viewportPadding: 300 });
+    var algo = new markerClusterer.SuperClusterViewportAlgorithm({ maxZoom: 17, radius: 60, viewportPadding: 400 });
+    // The stock algorithm reports "changed" on ANY pan (its padded pixel view differs), so every idle
+    // destroys and recreates all cluster markers, which flickers. Keep the last result until the map has
+    // moved more than half the padding, or the zoom or marker set changes.
+    var superCalc = algo.calculate.bind(algo);
+    var last = null;
+    algo.calculate = function (input) {
+      var proj = input.mapCanvasProjection, map = input.map, mk = input.markers;
+      var zoom = Math.round(map.getZoom()), c = map.getCenter();
+      if (last && proj && last.zoom === zoom && last.n === mk.length && last.first === mk[0] && last.last === mk[mk.length - 1]) {
+        var p = proj.fromLatLngToDivPixel(c), q = proj.fromLatLngToDivPixel(last.center);
+        if (p && q && Math.abs(p.x - q.x) < 200 && Math.abs(p.y - q.y) < 200) return { clusters: last.clusters, changed: false };
+      }
+      var res = superCalc(input);
+      last = { zoom: zoom, center: c, n: mk.length, first: mk[0], last: mk[mk.length - 1], clusters: res.clusters };
+      return res;
+    };
     // The base class returns ALL markers unclustered at zoom >= maxZoom (39k DOM nodes). Raise only its
     // check so SuperCluster keeps returning just the viewport's points; its own clustering maxZoom stays 17.
     algo.maxZoom = 22;

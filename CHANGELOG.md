@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.25.1]
+- Stop re-rendering every cluster marker on each small pan (cause of marker flicker)
+
 ## [0.25.0]
 - Clear route button; typeable city filter on the main page
 
