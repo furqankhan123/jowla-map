@@ -20,8 +20,8 @@
 <h1>DFW Jowla Map</h1>
 
 <label>City</label>
-<select id="myCity">
-  <option value="All">All</option>
+<input id="myCity" type="text" list="cityList" placeholder="All cities (type to search)" autocomplete="off">
+<datalist id="cityList">
   <option value="Plano">Plano</option>
   <option value="Princeton">Princeton</option>
   <option value="Frisco">Frisco</option>
@@ -74,7 +74,7 @@
   <option value="Edmond">Edmond</option>
   <option value="Norman">Norman</option>
   <option value="Savannah">Savannah</option>
-</select>
+</datalist>
 
 <label>Status</label>
 <select id="myStatus">
@@ -99,7 +99,7 @@
 
 <div class="bar"><button onclick="RedirectURL()">Display Map</button></div>
 
-<script src="config.js?v=0.24.14"></script>
+<script src="config.js?v=0.25.0"></script>
 <script>
 /* Cities present in the data but missing from the static list are added once the sheet
    (served from the service worker data cache when offline) arrives. */
@@ -109,7 +109,7 @@
   fetch('https://sheets.googleapis.com/v4/spreadsheets/' + C.sheetId + '/values/' + encodeURIComponent(C.cityRange) + '?key=' + C.sheetsKey)
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data) {
-      var sel = document.getElementById('myCity');
+      var sel = document.getElementById('cityList');
       var have = {};
       Array.prototype.forEach.call(sel.options, function(o) { have[o.value] = true; });
       var extra = {};
@@ -117,17 +117,11 @@
         var c = row[0];
         if (c && !have[c]) extra[c] = true;
       });
-      var chosen = sel.value;
       Object.keys(extra).sort().forEach(function(c) {
         var o = document.createElement('option');
-        o.value = c; o.textContent = c;
+        o.value = c;
         sel.appendChild(o);
       });
-      sel.value = chosen;
-      try {
-        var saved = JSON.parse(localStorage.getItem('jowla-filters') || '{}');
-        if (saved.myCity && extra[saved.myCity]) sel.value = saved.myCity;
-      } catch (e) {}
     })
     .catch(function() {});
 })();
@@ -136,8 +130,11 @@
 function createDynamicURL() {
   var URL = 'map.html';
   var params = [];
-  var City = document.getElementById('myCity').value;
-  if (City !== 'All') {
+  var City = document.getElementById('myCity').value.trim();
+  Array.prototype.forEach.call(document.getElementById('cityList').options, function(o) {
+    if (o.value.toLowerCase() === City.toLowerCase()) City = o.value; // canonical casing
+  });
+  if (City && City.toLowerCase() !== 'all') {
     params.push('City===' + encodeURIComponent("'" + City + "'"));
   }
   var Status = document.getElementById('myStatus').value;
@@ -157,7 +154,10 @@ var FIELDS = ['myCity', 'myStatus', 'myVisited', 'search'];
 (function restore() {
   try {
     var saved = JSON.parse(localStorage.getItem('jowla-filters') || '{}');
-    FIELDS.forEach(function(id) { if (saved[id] != null) document.getElementById(id).value = saved[id]; });
+    FIELDS.forEach(function(id) {
+      if (saved[id] == null) return;
+      document.getElementById(id).value = (id === 'myCity' && saved[id] === 'All') ? '' : saved[id];
+    });
   } catch (e) {}
 })();
 function RedirectURL() {

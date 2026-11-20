@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.25.0]
+- Clear route button; typeable city filter on the main page
+
 ## [0.24.14]
 - Show address line 1 under the Next stop in the route header
 

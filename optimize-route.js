@@ -974,6 +974,7 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
   if (end && !end.same) html += `<button type="button" class="nav-btn reset-end">Reset: return to start</button>`;
   else html += `<button type="button" class="nav-btn set-end">Set a different end point…</button>`;
   html += `<button type="button" class="nav-btn secondary" id="toggle-pins"></button>`;
+  html += `<button type="button" class="nav-btn secondary" id="clear-route">Clear route</button>`;
   html += `<div id="end-picker" hidden></div>`;
 
   html += `<div class="seg-grid">${segRow(pref)}${segRow(otherApp)}</div>`;
@@ -997,6 +998,8 @@ function showRoutePanel(orderedStops, totalMins, travelMode, start, legSecs, end
 
   const tp = body.querySelector('#toggle-pins');
   if (tp) { setPinsToggleLabel(); tp.addEventListener('click', () => { hideOtherPins = !hideOtherPins; setPinsToggleLabel(); applyPinVisibility(); }); }
+  const clr = body.querySelector('#clear-route');
+  if (clr) clr.addEventListener('click', () => { window.clearRoute(); showToast('Route cleared'); });
   const setEnd = body.querySelector('.set-end');
   if (setEnd) setEnd.addEventListener('click', openEndPicker);
   const rst = body.querySelector('.reset-end');
