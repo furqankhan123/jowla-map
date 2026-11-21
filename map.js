@@ -467,18 +467,12 @@ function makeLazyMarker(map, loc) {
   };
 }
 
-var pinTemplate = null;
-function createMarker(map, location) {
-  var position = { lat: parseFloat(location.latitude), lng: parseFloat(location.longtitude) };
-  if (!pinTemplate) {
-    pinTemplate = document.createElement('img');
-    pinTemplate.width = 40; pinTemplate.height = 40; pinTemplate.alt = ''; pinTemplate.style.display = 'block';
+/** Stop popup (name, address, last comment/visit, Navigate, Visit Details); shared by sheet pins and route pins. */
+function showStopPopup(map, location, marker) {
+  if (!sharedIw) {
+    sharedIw = new google.maps.InfoWindow({ maxWidth: Math.min(320, window.innerWidth - 48), headerDisabled: true });
+    window.__iw = sharedIw;
   }
-  var img = pinTemplate.cloneNode(false);
-  img.src = window.pinIconUrl(location.marker);
-  img.decoding = 'sync'; // lazy-loaded imgs pop in late when a marker re-enters the view
-  var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '', gmpClickable: true });
-  marker.addEventListener('gmp-click', function() {
     window.__popupLoc = location;
     var e = escapeHtml;
     var nb = navButtons(location.latitude, location.longtitude);
@@ -493,7 +487,21 @@ function createMarker(map, location) {
       '<a class="iw-btn" href="' + e(nb.primary.url) + '" target="_blank" rel="noopener">Navigate (' + nb.primary.label + ')</a>' +
       '<a class="iw-btn alt" href="' + e(detailsUrl) + '" target="_blank" rel="noopener" onclick="if(window.markRouteStopDone){markRouteStopDone(window.__popupLoc);}">Visit Details</a>' +
       '</div>');
-    sharedIw.open({ map: map, anchor: marker });
-  });
+  sharedIw.open({ map: map, anchor: marker });
+}
+window.showStopPopup = showStopPopup;
+
+var pinTemplate = null;
+function createMarker(map, location) {
+  var position = { lat: parseFloat(location.latitude), lng: parseFloat(location.longtitude) };
+  if (!pinTemplate) {
+    pinTemplate = document.createElement('img');
+    pinTemplate.width = 40; pinTemplate.height = 40; pinTemplate.alt = ''; pinTemplate.style.display = 'block';
+  }
+  var img = pinTemplate.cloneNode(false);
+  img.src = window.pinIconUrl(location.marker);
+  img.decoding = 'sync'; // lazy-loaded imgs pop in late when a marker re-enters the view
+  var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '', gmpClickable: true });
+  marker.addEventListener('gmp-click', function() { showStopPopup(map, location, marker); });
   return marker;
 }

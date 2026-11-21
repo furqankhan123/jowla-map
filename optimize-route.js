@@ -107,10 +107,18 @@ function makeRouteStopContent(stop, n) {
 }
 function drawNumberedMarkers(map, ordered) {
   routeMarkers.forEach((m) => { m.map = null; });
-  routeMarkers = ordered.map((s, i) => new google.maps.marker.AdvancedMarkerElement({
-    map, position: { lat: s.latitude, lng: s.longtitude }, content: makeRouteStopContent(s, i + 1),
-    zIndex: 5000 + i, title: (window.titleCase ? titleCase(s.name) : s.name) || '', gmpClickable: false
-  }));
+  routeMarkers = ordered.map((s, i) => {
+    const m = new google.maps.marker.AdvancedMarkerElement({
+      map, position: { lat: s.latitude, lng: s.longtitude }, content: makeRouteStopContent(s, i + 1),
+      zIndex: 5000 + i, title: (window.titleCase ? titleCase(s.name) : s.name) || '', gmpClickable: true
+    });
+    // Same popup as a normal pin; use the full sheet row (comments, last visit) when it is loaded.
+    m.addEventListener('gmp-click', () => {
+      const full = (window.locations || []).find((x) => sameStop(x, s)) || s;
+      if (window.showStopPopup) window.showStopPopup(map, full, m);
+    });
+    return m;
+  });
   applyPinVisibility();
 }
 

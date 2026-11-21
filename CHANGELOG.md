@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.26.2]
+- Route view: tapping a route pin opens the same popup as a normal pin (comments, last visit, Navigate, Visit Details)
+
 ## [0.26.1]
 - Route view: show only the route's stops as their original status pins (number chip on each), instead of green dots
 
