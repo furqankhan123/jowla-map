@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.26.1]
+- Route view: show only the route's stops as their original status pins (number chip on each), instead of green dots
+
 ## [0.26.0]
 - Route view: numbered stops now carry their original status pin as a badge so each visit's status is identifiable
 

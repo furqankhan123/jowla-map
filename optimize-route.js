@@ -80,25 +80,29 @@ function drawStartMarker() {
     { color: '#34a853', size: 26, text: 'S', zIndex: 2000, title: 'Route start: ' + opts.customStart.name });
 }
 
-/** Numbered route dot carrying the stop's original status pin as a badge, so visit status stays visible on the route. */
+/** Route stop = the stop's original status pin (same image as the normal map pin) with a small order-number chip.
+    Falls back to the green numbered dot when the row has no pin code. */
 function makeRouteStopContent(stop, n) {
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:relative;width:28px;height:28px;transform:translateY(50%);';
-  const dot = document.createElement('div');
-  dot.textContent = String(n);
-  dot.style.cssText = 'width:28px;height:28px;border-radius:50%;box-sizing:border-box;border:2px solid #fff;background:#137333;color:#fff;' +
-    'font:bold 12px/1 sans-serif;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.45);';
-  wrap.appendChild(dot);
   // Routes saved before the pin code was stored: look it up from the loaded sheet rows.
   let code = stop.marker;
   if (!code) { const l = (window.locations || []).find((x) => sameStop(x, stop)); code = l && l.marker; }
   const url = window.pinIconUrl ? window.pinIconUrl(code) : '';
-  if (url) {
-    const img = document.createElement('img');
-    img.src = url; img.alt = ''; img.width = 26; img.height = 26; img.decoding = 'sync';
-    img.style.cssText = 'position:absolute;top:-17px;right:-15px;width:26px;height:26px;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));';
-    wrap.appendChild(img);
+  const wrap = document.createElement('div');
+  if (!url) {
+    wrap.style.cssText = 'width:28px;height:28px;border-radius:50%;box-sizing:border-box;border:2px solid #fff;background:#137333;color:#fff;' +
+      'font:bold 12px/1 sans-serif;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.45);transform:translateY(50%);';
+    wrap.textContent = String(n);
+    return wrap;
   }
+  wrap.style.cssText = 'position:relative;width:40px;height:40px;';
+  const img = document.createElement('img');
+  img.src = url; img.alt = ''; img.width = 40; img.height = 40; img.decoding = 'sync'; img.style.display = 'block';
+  const chip = document.createElement('div');
+  chip.textContent = String(n);
+  chip.style.cssText = 'position:absolute;top:-6px;right:-8px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;' +
+    'background:#137333;color:#fff;border:1.5px solid #fff;font:bold 11px/15px sans-serif;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.5);';
+  wrap.appendChild(img);
+  wrap.appendChild(chip);
   return wrap;
 }
 function drawNumberedMarkers(map, ordered) {
