@@ -475,7 +475,7 @@ function createMarker(map, location) {
     pinTemplate.width = 40; pinTemplate.height = 40; pinTemplate.alt = ''; pinTemplate.style.display = 'block';
   }
   var img = pinTemplate.cloneNode(false);
-  img.src = "https://maps.google.com/mapfiles/kml/paddle/" + location.marker + ".png";
+  img.src = window.pinIconUrl(location.marker);
   img.decoding = 'sync'; // lazy-loaded imgs pop in late when a marker re-enters the view
   var marker = new google.maps.marker.AdvancedMarkerElement({ position: position, content: img, title: location.name || '', gmpClickable: true });
   marker.addEventListener('gmp-click', function() {

@@ -80,10 +80,33 @@ function drawStartMarker() {
     { color: '#34a853', size: 26, text: 'S', zIndex: 2000, title: 'Route start: ' + opts.customStart.name });
 }
 
+/** Numbered route dot carrying the stop's original status pin as a badge, so visit status stays visible on the route. */
+function makeRouteStopContent(stop, n) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;width:28px;height:28px;transform:translateY(50%);';
+  const dot = document.createElement('div');
+  dot.textContent = String(n);
+  dot.style.cssText = 'width:28px;height:28px;border-radius:50%;box-sizing:border-box;border:2px solid #fff;background:#137333;color:#fff;' +
+    'font:bold 12px/1 sans-serif;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.45);';
+  wrap.appendChild(dot);
+  // Routes saved before the pin code was stored: look it up from the loaded sheet rows.
+  let code = stop.marker;
+  if (!code) { const l = (window.locations || []).find((x) => sameStop(x, stop)); code = l && l.marker; }
+  const url = window.pinIconUrl ? window.pinIconUrl(code) : '';
+  if (url) {
+    const img = document.createElement('img');
+    img.src = url; img.alt = ''; img.width = 26; img.height = 26; img.decoding = 'sync';
+    img.style.cssText = 'position:absolute;top:-17px;right:-15px;width:26px;height:26px;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));';
+    wrap.appendChild(img);
+  }
+  return wrap;
+}
 function drawNumberedMarkers(map, ordered) {
   routeMarkers.forEach((m) => { m.map = null; });
-  routeMarkers = ordered.map((s, i) => makeDotMarker(map, { lat: s.latitude, lng: s.longtitude },
-    { color: '#137333', size: 28, text: String(i + 1), zIndex: 5000 + i }));
+  routeMarkers = ordered.map((s, i) => new google.maps.marker.AdvancedMarkerElement({
+    map, position: { lat: s.latitude, lng: s.longtitude }, content: makeRouteStopContent(s, i + 1),
+    zIndex: 5000 + i, title: (window.titleCase ? titleCase(s.name) : s.name) || '', gmpClickable: false
+  }));
   applyPinVisibility();
 }
 
@@ -300,7 +323,7 @@ async function runOptimization(map, start, bounds, source) {
   const route = {
     stops: result.ordered.map(s => ({
       name: s.name, address: s.address, latitude: s.latitude, longtitude: s.longtitude,
-      db: s.db, rowid: s.rowid, sts: s.sts, done: false
+      db: s.db, rowid: s.rowid, sts: s.sts, marker: s.marker, done: false
     })),
     legSecs: result.legSecs,
     totalMins: result.totalMins,
@@ -415,7 +438,7 @@ function replanRemaining() {
       if (!r) return;
       const strip = (x) => ({
         name: x.name, address: x.address, latitude: x.latitude, longtitude: x.longtitude,
-        db: x.db, rowid: x.rowid, sts: x.sts, done: false
+        db: x.db, rowid: x.rowid, sts: x.sts, marker: x.marker, done: false
       });
       const route = {
         stops: done.concat(r.ordered.map(strip)),
@@ -449,7 +472,7 @@ async function rerouteWithEnd(endPoint) {
     if (!r) return;
     const strip = (x) => ({
       name: x.name, address: x.address, latitude: x.latitude, longtitude: x.longtitude,
-      db: x.db, rowid: x.rowid, sts: x.sts, done: !!(old.stops.find((o) => sameStop(o, x)) || {}).done
+      db: x.db, rowid: x.rowid, sts: x.sts, marker: x.marker, done: !!(old.stops.find((o) => sameStop(o, x)) || {}).done
     });
     const route = {
       stops: r.ordered.map(strip), legSecs: r.legSecs, totalMins: r.totalMins, travelMode: r.travelMode,

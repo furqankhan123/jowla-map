@@ -153,3 +153,10 @@ console.log('isAutoVisit ok');
   assert.deepStrictEqual(sw, ['a1', 'a2', 'a3', 'b2', 'b3', 'b1']);
   console.log('turns/sweep ok');
 })();
+
+// --- pinIconUrl: status pin badge on route markers
+assert.strictEqual(L.pinIconUrl('grn-blank'), 'https://maps.google.com/mapfiles/kml/paddle/grn-blank.png');
+assert.strictEqual(L.pinIconUrl(' ylw-circle '), 'https://maps.google.com/mapfiles/kml/paddle/ylw-circle.png');
+assert.strictEqual(L.pinIconUrl(''), '');
+assert.strictEqual(L.pinIconUrl(undefined), '');
+assert.strictEqual(L.pinIconUrl('x"><script>'), '');

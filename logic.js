@@ -288,7 +288,15 @@
     return rows;
   }
 
+  /** URL of the status "paddle" pin for a row's marker code (e.g. "grn-blank"); '' when the row has none. */
+  function pinIconUrl(code) {
+    var c = String(code == null ? '' : code).trim();
+    if (!/^[A-Za-z0-9_-]+$/.test(c)) return '';
+    return 'https://maps.google.com/mapfiles/kml/paddle/' + c + '.png';
+  }
+
   var api = {
+    pinIconUrl: pinIconUrl,
     mergeColumnRanges: mergeColumnRanges,
     decodePolyline: decodePolyline, countTurns: countTurns, streetKey: streetKey, addressLine1: addressLine1, streetSweepOrder: streetSweepOrder,
     bestStopSet: bestStopSet,

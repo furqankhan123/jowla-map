@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.26.0]
+- Route view: numbered stops now carry their original status pin as a badge so each visit's status is identifiable
+
 ## [0.25.4]
 - Shorten cluster marker overlap to 150ms to reduce lag
 
